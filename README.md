@@ -11,7 +11,7 @@ A Generic Schema Evolution Approach for NoSQL and Relational Databases. IEEE Tra
 
 [2] Alberto Hernández Chillón, Diego Sevilla Ruiz, Jesús García Molina: 
 Athena: A Database-Independent Schema Definition Language. ER (Workshops) 2021: 33-42
-(https://www.researchgate.net/publication/355185841_Athena_A_Database-Independent_Schema_Definition_Language)
+(https://link.springer.com/chapter/10.1007/978-3-030-88358-4_4)
 
 # Repository Structure
 Each project follows the same internal organization, separating the training and testing phases, along with the corresponding prompts used. In addition, a conversation with the model is included, following the prompts that were executed. The corresponding n8n workflows are also provided, enabling the execution and reproduction of the complete process.

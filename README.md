@@ -12,7 +12,7 @@ Athena: A Database-Independent Schema Definition Language. ER (Workshops) 2021: 
 
 # Repository Structure
 
-Each project follows the same internal organization, separating the training and testing phases, along with the corresponding prompts used. In addition, a conversation with the model is included, following the prompts that were executed but with minimal modifications.
+Each project follows the same internal organization, separating the training and testing phases, along with the corresponding prompts used. In addition, a conversation with the model is included, following the prompts that were executed. The corresponding n8n workflows are also provided, enabling the execution and reproduction of the complete process.
 
 - **/**
     - 📁 **.AthenaTraining/**
@@ -58,6 +58,9 @@ Each project follows the same internal organization, separating the training and
                 - 📄 MongoValidator2Athena.js
                 - 📄 NaturalLanguage2Athena.txt
                 - 📄 SQL2Athena.sql
+            - 📁 n8n workflows/
+                - 📄 n8n-Athena-DeepSeek.json
+                - 📄 n8n-Athena-OpenAI_GPT.json
             - 📄 Prompt.txt
     - 📁 **.OrionTraining/**
         - 📁 Learning/
@@ -95,6 +98,9 @@ Each project follows the same internal organization, separating the training and
                 - 📄 MongoDB2Orion.js
                 - 📄 Neo4j2Orion.cypher
                 - 📄 SQL2Orion.sql
+            - 📁 n8n workflows/
+                - 📄 n8n-Athena-DeepSeek.json
+                - 📄 n8n-Athena-OpenAI_GPT.json
             - 📄 Prompt.txt
     - 📁 **.M2T/**
         - 📁 Athena/
@@ -108,20 +114,18 @@ Each project follows the same internal organization, separating the training and
             - 📁 utils/
                 - 📄 MongoDBTransactionModule.xtend
                 - 📄 SqlProcedureModule.xtend
-# File Description
+
 ## Training and Testing Prompts
 Each `prompt.txt` file contains multiple prompts used to train and evaluate the model.
 The prompts are separated by the delimiter "----", which allows for a clear differentiation of each query or instruction given to the model.
-
 - **Learning** folder: Contains the prompts designed for the model to learn the structure and rules of each DSL, including transformations to different database schemas.
-- **Testing** folder: Contains the prompts used to evaluate the language model's ability to understand and transform code from the DSLs.
+- **Testing** folder: Contains the prompts used to evaluate the language model's ability to understand and transform code from the DSLs, as well as the exported n8n workflows required to execute the evaluation process.
 
-## Usage Instructions
+## Example Conversations
 You can see the example conversations here:
+- Athena: https://chatgpt.com/share/689a0551-d5f4-800b-9adb-98eb7e14cfa4
+- Orion: https://chatgpt.com/share/68961d20-1aa8-800b-b9bd-2eca64d7cf1f
 
-Athena: https://chatgpt.com/share/689a0551-d5f4-800b-9adb-98eb7e14cfa4
+## Reproducing the Experiments
+To reproduce the experiments, import the corresponding n8n workflow into your n8n instance. After importing it, configure the workflow variables by selecting the schema to use and the translation direction (`DSL → DB` or `NL/DB → DSL`). Once configured, execute them using the workflow.
 
-Orion: https://chatgpt.com/share/68961d20-1aa8-800b-b9bd-2eca64d7cf1f
-1. Review the prompts.
-2. Execute the prompts.
-3. Evaluate results. Some results will require clarification to improve the model.

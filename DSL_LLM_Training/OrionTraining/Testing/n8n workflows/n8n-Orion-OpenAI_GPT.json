@@ -1,0 +1,720 @@
+{
+  "name": "DSL&LLM-Orion",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        -128
+      ],
+      "id": "41050db0-d8a1-4feb-ab71-d1161a4c6090",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "031cb3fa-f2e2-4788-a18f-1f4a279fa6b3",
+              "name": "grammar",
+              "value": "grammar es.um.uschema.xtext.orion.Orion with es.um.uschema.xtext.athena.Athena\n\ngenerate orion \"http://www.um.es/uschema/xtext/orion/Orion\"\nimport \"http://www.eclipse.org/emf/2002/Ecore\" as ecore\n\nOrionOperations:\n  name=ValidId 'OPERATIONS'\n  ( ( 'USING' imports=Import ) | ( scriptMode?='SCRIPT' 'MODE' ) )\n  ( operations+=BasicOperation+ | evolBlocks+=EvolBlock+ )\n;\n\nEvolBlock:\n  'EBlock' name=INT\n  '{'\n    ( operations+=BasicOperation )+\n  '}'\n;\n\nBasicOperation:\n  SchemaTypeOp | FeatureOp | AttributeOp | ReferenceOp | AggregateOp\n;\n\nSchemaTypeOp:\n  EntityOp | RelationshipOp\n;\n\nEntityOp:\n  EntityAddOp | EntityDeleteOp | EntityRenameOp | EntitySplitOp | EntityMergeOp | EntityExtractOp | EntityDelVarOp | EntityAdaptOp | EntityUnionOp\n;\n\nRelationshipOp:\n  RelationshipAddOp | RelationshipDeleteOp | RelationshipRenameOp | RelationshipSplitOp | RelationshipMergeOp | RelationshipExtractOp | RelationshipDelVarOp | RelationshipAdaptOp | RelationshipUnionOp\n;\n\nFeatureOp:\n  FeatureDeleteOp | FeatureRenameOp | FeatureCopyOp | FeatureMoveOp | FeatureNestOp | FeatureUnnestOp\n;\n\nAttributeOp:\n  AttributeAddOp | AttributeCastOp | AttributePromoteOp | AttributeDemoteOp\n;\n\nReferenceOp:\n  ReferenceAddOp | ReferenceCastOp | ReferenceMultiplicityOp | ReferenceMorphOp\n;\n\nAggregateOp:\n  AggregateAddOp | AggregateMultiplicityOp | AggregateMorphOp\n;\n\nEntityAddOp:             'ADD'     'ENTITY'       spec=SchemaTypeAddSpec;\nEntityDeleteOp:          'DELETE'  'ENTITY'       spec=SchemaTypeDeleteSpec;\nEntityRenameOp:          'RENAME'  'ENTITY'       spec=SchemaTypeRenameSpec;\nEntitySplitOp:           'SPLIT'   'ENTITY'       spec=SchemaTypeSplitSpec;\nEntityExtractOp:         'EXTRACT' 'ENTITY'       spec=SchemaTypeExtractSpec;\nEntityMergeOp:           'MERGE'   'ENTITY'       spec=SchemaTypeMergeSpec;\nEntityDelVarOp:          'DELVAR'  'ENTITY'       spec=SchemaTypeDelVarSpec;\nEntityAdaptOp:           'ADAPT'   'ENTITY'       spec=SchemaTypeAdaptSpec;\nEntityUnionOp:           'UNION'   'ENTITY'       spec=SchemaTypeUnionSpec;\nRelationshipAddOp:       'ADD'     'RELATIONSHIP' spec=SchemaTypeAddSpec;\nRelationshipDeleteOp:    'DELETE'  'RELATIONSHIP' spec=SchemaTypeDeleteSpec;\nRelationshipRenameOp:    'RENAME'  'RELATIONSHIP' spec=SchemaTypeRenameSpec;\nRelationshipSplitOp:     'SPLIT'   'RELATIONSHIP' spec=SchemaTypeSplitSpec;\nRelationshipExtractOp:   'EXTRACT' 'RELATIONSHIP' spec=SchemaTypeExtractSpec;\nRelationshipMergeOp:     'MERGE'   'RELATIONSHIP' spec=SchemaTypeMergeSpec;\nRelationshipDelVarOp:    'DELVAR'  'RELATIONSHIP' spec=SchemaTypeDelVarSpec;\nRelationshipAdaptOp:     'ADAPT'   'RELATIONSHIP' spec=SchemaTypeAdaptSpec;\nRelationshipUnionOp:     'UNION'   'RELATIONSHIP' spec=SchemaTypeUnionSpec;\nFeatureDeleteOp:         'DELETE'                 spec=FeatureDeleteSpec;\nFeatureRenameOp:         'RENAME'                 spec=FeatureRenameSpec;\nFeatureCopyOp:           'COPY'                   spec=FeatureAllocateSpec;\nFeatureMoveOp:           'MOVE'                   spec=FeatureAllocateSpec;\nFeatureNestOp:           'NEST'                   spec=FeatureNestSpec;\nFeatureUnnestOp:         'UNNEST'                 spec=FeatureUnnestSpec;\nAttributeAddOp:          'ADD'     'ATTR'         spec=AttributeAddSpec;\nAttributeCastOp:         'CAST'    'ATTR'         spec=AttributeOrReferenceCastSpec;\nAttributePromoteOp:      'PROMOTE' 'ATTR'         spec=AttributePromoteSpec;\nAttributeDemoteOp:       'DEMOTE'  'ATTR'         spec=AttributeDemoteSpec;\nReferenceAddOp:          'ADD'     'REF'          spec=ReferenceAddSpec;\nReferenceCastOp:         'CAST'    'REF'          spec=AttributeOrReferenceCastSpec;\nReferenceMultiplicityOp: 'MULT'    'REF'          spec=ReferenceOrAggregateMultiplicitySpec;\nReferenceMorphOp:        'MORPH'   'REF'          spec=ReferenceMorphSpec;\nAggregateAddOp:          'ADD'     'AGGR'         spec=AggregateAddSpec;\nAggregateMultiplicityOp: 'MULT'    'AGGR'         spec=ReferenceOrAggregateMultiplicitySpec;\nAggregateMorphOp:        'MORPH'   'AGGR'         spec=AggregateMorphSpec;\n\n////////////////////////////////////////////////////////////////\n////////////////////////////////////////////////////////////////\n////////////////////// Entity operations ///////////////////////\n\nSchemaTypeAddSpec:\n  name=ValidId ( ':' '{' features+=SimpleDataFeature (',' features+=SimpleDataFeature )* '}' )?\n;\n\nSchemaTypeDeleteSpec:\n  ref=ValidId\n;\n\nSchemaTypeRenameSpec:\n  ref=ValidId 'TO' name=ValidId\n;\n\nSchemaTypeSplitSpec:\n  ref=ValidId 'INTO' name1=ValidId features1=SplitFeatures ',' name2=ValidId features2=SplitFeatures\n;\n\nSchemaTypeExtractSpec:\n  ref=ValidId 'INTO' name=ValidId features=SplitFeatures\n;\n\nSchemaTypeMergeSpec:\n  ref1=ValidId ',' ref2=ValidId 'INTO' name=ValidId 'WHERE' condition=ConditionDecl\n;\n\nSchemaTypeDelVarSpec:\n  ref=ValidId '::' 'v'? target=VariationIdSpec\n;\n\nSchemaTypeAdaptSpec:\n  ref=ValidId '::' 'v'? source=VariationIdSpec 'TO' 'v'? target=VariationIdSpec\n;\n\nSchemaTypeUnionSpec:\n  ref=ValidId\n;\n////////////////////// Entity operations ///////////////////////\n////////////////////////////////////////////////////////////////\n////////////////////// Feature operations //////////////////////\n\nFeatureDeleteSpec:\n  selector=MultipleFeatureSelector\n;\n\nFeatureRenameSpec:\n  selector=SingleFeatureSelector 'TO' name=QualifiedName\n;\n\nFeatureAllocateSpec:\n  sourceSelector=SingleFeatureSelector 'TO' targetSelector=SingleFeatureSelector 'WHERE' condition=ConditionDecl\n;\n\nFeatureNestSpec:\n  selector=MultipleFeatureSelector 'TO' name=QualifiedName\n;\n\nFeatureUnnestSpec:\n  selector=MultipleFeatureSelector\n;\n\n////////////////////// Feature operations //////////////////////\n////////////////////////////////////////////////////////////////\n///////////////////// Attribute operations /////////////////////\n\nAttributeAddSpec:\n  ( key?='+' | ( ( optional?='?' )? ( unique?='!' )? ) ) selector=SingleFeatureSelector ( ':' type=DataType ( '(' defaultValue=DefaultValue ')' )? )?\n;\n\nAttributeOrReferenceCastSpec:\n  selector=MultipleFeatureSelector 'TO' type=SinglePrimitiveType\n;\n\nAttributePromoteSpec:\n  selector=MultipleFeatureSelector\n;\n\nAttributeDemoteSpec:\n  selector=MultipleFeatureSelector\n;\n\n//////////////////// Attribute operations //////////////////////\n////////////////////////////////////////////////////////////////\n//////////////////// Reference operations //////////////////////\n\nReferenceAddSpec:\n  ( optional?='?' )? selector=SingleFeatureSelector ':' // Optional?\n    (\n      ( type=SinglePrimitiveType ( '(' defaultValue=DefaultValue ')' )? ) // But is type necessary?\n      |\n      ( 'feat' 'by' featuredBy=ValidId ( '(' 'v'? variations+=VariationIdSpec ( ',' 'v'? variations+=VariationIdSpec )* ')' )? )\n      |\n      ( '{' ( features+=SimpleDataFeature (',' features+=SimpleDataFeature )* )? '}' )\n    ) multiplicity=('?'|'&'|'*'|'+') 'TO' ref=ValidId ( 'WHERE' condition=ConditionDecl )?\n;\n\nReferenceOrAggregateMultiplicitySpec:\n  selector=MultipleFeatureSelector 'TO' multiplicity=('?'|'&'|'*'|'+')\n;\n\nReferenceMorphSpec:\n  selector=SingleFeatureSelector ( '(' ( deleteId?='rmId' )? ( deleteEntity?='rmEntity' )? ')' )? 'TO' name=ValidId\n;\n\n//////////////////// Reference operations //////////////////////\n////////////////////////////////////////////////////////////////\n//////////////////// Aggregate operations //////////////////////\n\nAggregateAddSpec:\n  ( optional?='?' )? selector=SingleFeatureSelector ':' '{' features+=SimpleDataFeature (',' features+=SimpleDataFeature )* '}' multiplicity=('?'|'&'|'*'|'+') ( 'AS' name=ValidId )?\n;\n\nAggregateMorphSpec:\n  selector=SingleFeatureSelector 'TO' name=ValidId\n;\n\n//////////////////// Aggregate operations //////////////////////\n////////////////////////////////////////////////////////////////\n////////////////////////// Other stuff /////////////////////////\n\nFeatureSelector:\n  SingleFeatureSelector | MultipleFeatureSelector\n;\n\nSingleFeatureSelector:\n  ( ( ref=ValidId ( '(' 'v'? variations+=VariationIdSpec ( ',' 'v'? variations+=VariationIdSpec )* ')' )? ) | forAll?='*' ) '::' target=QualifiedName\n;\n\nMultipleFeatureSelector:\n  ( ( ref=ValidId ( '(' 'v'? variations+=VariationIdSpec ( ',' 'v'? variations+=VariationIdSpec )* ')' )? ) | forAll?='*' ) '::' targets+=QualifiedName ( ',' targets+=QualifiedName )*\n;\n\nSimpleDataFeature:\n  ( key?='+' | ( ( optional?='?' )? ( unique?='!' )? ) ) name=QualifiedName ( ':' type=DataType ( '(' defaultValue=DefaultValue ')' )? )?\n;\n\nSplitFeatures:\n  '(' features+=QualifiedName (',' features+=QualifiedName)* ')'\n;\n\nDefaultValue:\n  EString | EDouble | EInt | EBoolean\n;\n\nEDouble returns ecore::EDouble:\n  '-' ? INT '.' INT\n;\n\nEString returns ecore::EString:\n  STRING\n;\n\nEBoolean returns ecore::EBoolean:\n  'true' | 'false'\n;\n\nConditionDecl:\n  c1=QualifiedName '=' c2=QualifiedName// Condition hierarchy ( op=('&&'|'||') '(' c3=ConditionDecl ')' )?\n;\n\nQualifiedName: ValidId ( '.' ValidId )*;\n\n@Override\nKEYWORD: 'EBlock' | 'ADD' | 'DELETE' | 'RENAME' | 'SPLIT' | 'EXTRACT' | 'MERGE' | 'COPY' | 'MOVE' | 'NEST' | 'UNNEST' |\n         'ATTR' | 'CAST' | 'MULT' | 'MORPH' | 'TO' | 'INTO' | 'WHERE' | 'true' | 'false' | Athena::KEYWORD\n;\n",
+              "type": "string"
+            },
+            {
+              "id": "8be19346-a0c3-45fc-a34d-06be48be90a0",
+              "name": "chapter",
+              "value": "Orion: A Schema Evolution Language\n\nDatabase schemas use to be modified along the lifetime of databases. These schema changes\nmay be caused due to new functional or non-functional requirements, or database refactoring,\namong other situations. When this happens, stored data and application code must be\nadapted to the new schema, as illustrated in Figure 6.1. Thus, the automation of schema\nchanges is crucial to save effort and to avoid data and application errors. For relational\ndatabases, a great deal of research effort has been devoted to address the schema evolution\nproblem, and a number of tools, from prototypes to workbenches, have been built to facilitate\nthe schema change management [HH03, CMDZ13]. Also, schema evolution of object\ndatabases has been extensively studied [Li99].\nUnlike relational and object-oriented systems, schema evolution for NoSQL databases has\nreceived little attention. This is partly because the lack of a standard or specification for\nNoSQL data models leads to systems of the same NoSQL category having different features,\nwhich adds to the challenge of addressing schema evolution for these systems. Another key factor\ncontributing to the difficulty of handling evolution in NoSQL systems is that in order to\nprovide flexibility to adapt to schema changes, most of NoSQL systems are “schema-on-read”,\nthat is, the schema declaration is not required prior to storing data (i.e., they are schemaless).\nAlthough the approaches published do handle data model heterogeneity [FGC20, HKS19]\nthey share some limitations: Schema change operations for relationships have not adequately\n103\nFigure 6.1: Database and code update under schema changes.\nbeen addressed, and the existence of structural variation or relationship types is not considered.\nStructural variation is possible for schemaless systems since schemas guarantee that data\nconforms to a particular structure, and relationship types are part of graph schemas.\nIn this chapter, we show a generic approach aimed to offer automated evolution support\nfor NoSQL and relational systems. It is based on the U-Schema data model and uses Athena\nschemas as an input. Since U-Schema integrates data models for the four kinds of NoSQL systems\nand the relational model, it has more expressive power than other proposed generic data\nmodels, such as the ones shown in [HEH+94, FGC20]. For example, U-Schema distinguishes\nbetween entity types and relationship types, includes aggregation and reference relationships,\nand allows to represent the structural variation of the schema types. Our approach consists\non defining a taxonomy of Schema Change Operations (SCOs) defined on U-Schema and a\ndomain-specific language (DSL) that implements them. With this language, named Orion,\ndatabase administrators and developers can write scripts that specify sets of SCOs. The Orion\nengine has been built to update the schema automatically from these scripts, and to translate\nthem to MongoDB (document data model), Cassandra (columnar), and Neo4j (graph) to update\nthe database. On the other hand, code updating is not addressed here, leaving this task\nto another implements in our toolkit.\nThis chapter is organized in the following sections: The next section is used to introduce\nan overview of the approach and the running example used later on. After that, the abstract\ntaxonomy of changes is detailed. Then, the Orion language is described as a concrete imple-\n104\nmentation of that taxonomy. Next, a formal validation of the taxonomy is shown as well as a\nmeasure of performance for Orion. Finally, an evaluation of the Orion language is performed\nby applying it to three real case scenarios.\n6.1 Overview of the Approach\nWe followed the approach summarized in Figure 6.2. First, we defined the taxonomy of\nschema changes by sorting the elements susceptible to be changed on the U-Schema metamodel,\nand then we modeled operations based on those changes. Once the taxonomy has\nbeen defined, we provided an implementation of it by creating the Orion metamodel, which\nconforms the Orion DSL able to express operations. With Orion, developers can create models\nthat specify a set of operations to be executed over a provided schema.\nOnce Orion models can be created, we implemented the Orion engine. This engine receives\nan Athena schema and an Orion model, and provides two functions: (i) Updating the schema\naccording to the operations defined, and generating scripts able to update the data in specific\ndatabases. These two results contribute to the evolution of the whole system, as was explained\nat the beginning of the chapter.\nFigure 6.2: The process of design and implementation of Orion.\n105\n6.1.1 The GameTracker Schema Running Example\nTo illustrate better the definition of the taxonomy of changes, the Orion language and the\nusage of the Orion engine, we will introduce an input Athena schema over which Orion operations\nwill be specified. The schema can be seen in Figure 6.3 and is based on a tracker able\nto follow player progress in videogame achievements.\nSchema GameTracker:1\nRoot entity Player {\nCommon {\n+ id: Identifier,\nnickname: String,\navatar_url: String /^https/,\nstatus: Integer (0 .. 5),\nlast_activity: Timestamp,\nreputation: Double,\nsuspended: Boolean,\nuser_data: Aggr<Player_Data>&\n}\nVariation 1 {\nexperience: Double,\nhours_played: Double,\nach_earned: Aggr<Ach_Summary>+,\nscore: Integer (0 .. 99999)\n}\nVariation 2 {}\n}\nEntity Player_Data {\ncountry_code: Integer,\nname: String,\nemail: String /^.+@.+\\\\.com$/,\n? birthday: Timestamp\n}\nEntity Ach_Summary\n{\nachievement: Ref<Achievement>&,\nof_the_day: Boolean,\n? completed_at: Timestamp,\n? points: Integer (0 .. 5000)\n}\nRoot entity Achievement\n{\n+ id: Identifier,\ncategories: List<String>,\ndescription: String,\nis_active: Boolean,\npoints: Integer (0 .. 5000)\n}\nRoot entity Game\n{\n+ id: Identifier,\nachievements: Ref<Achievement>+,\ndate_from: Timestamp,\ngenres: List<String>,\ntitle: String,\n? description: String,\n? max_players: Integer\n}\nFigure 6.3: The GameTracker Athena schema used as a running example.\nIn this example, the schema is formed by a set of five entity types: Player, Achievement,\nGame, Player_Data, and Ach_Summary. The three former are root entity types, that is, their\nobjects are not embedded in any other object, and the two latter are non-root as their instances\nare embedded into Player objects.\nPlayer is an entity type able to register participants collecting achievements. It has two\nstructural variations, where the first one (Variation 1) represents active players that contains\ncommon and four specific features: experience, hours_played, ach_earned, and score,\nand the second variation (Variation 2) represents newly registered players and only contains\ncommon features (e.g., nickname, status or suspended, among others). The rest of entity\n106\ntypes do not show explicit variations but some of them define optional features (“?”), such as\ncompleted_at and points in Ach_Summary, or description and max_players in Game.\nA feature declaration specifies its name and type. There are four kinds of features: keys,\nattributes, aggregates, and references. Attributes and aggregates denote the features that hold\nthe values of a database object. For attributes, the type can be either scalar (Integer, String,\nBoolean, etc) or structured (Set, List, Map, and Tuple). In the case of aggregates, the type\nis a non-root entity type. For example, Game.title is an attribute of type String, and\nPlayer.user_data specifies that Player_data objects are embedded in Player objects.\nThe example schema also shows some keys and references. Each key is denoted by a\n“+” symbol, and each root entity contains at least one key feature, such as Game.id or\nAchievement.id. References are associated to a root type with a cardinality, such as one to one\nor one to many. For example, Achievement is referenced by Game.achievements and\nAch_Summary.achievement.\n6.2 Design of a Taxonomy of Changes for NoSQL and Relational\nDatabases\nIn schema evolution approaches, the set of changes that can be applied on a particular data\nmodel are usually organized in form of a taxonomy [BKKK87, HVS21], where several categories\nare established depending on the kind of schema element affected by a change. These\ntaxonomies, however, do not include some of the changes proposed here due to not handling\na unified schema representation.\nWe have defined a taxonomy for the U-Schema data model which includes a set of operations\nricher than those previously proposed. To do so, first we have considered the elements\nof the data model susceptible to be changed:\n• Entity types and relationship types are susceptible to changes, and they can both be\ntreated indistinctly. Therefore a schema type category is created by grouping both concepts.\n• Since our data model considers structural variations, changes can be defined to be applied\nto these variations. For example,joining all the variations in a single variation to\nremove outliers [KSS15].\n107\n• Some changes can be applied to features independently of their type (i.e., attributes,\naggregates, and references). To denote this, these changes are grouped together on the\ntaxonomy under the features category.\n• Changes have also been defined for attributes, references and aggregates. Some of them\nare particularly frequent in certain environments, such as converting a particular reference\ninto an aggregate or vice versa [CW19].\n• Changes on keys have not been explicitly defined, because in U-Schema a key is a logical\nfeature that is always bound to an attribute, and therefore keys can be created and\ndeleted by means of their attribute, as will be shown.\n• Changes on dataTypes have also not been explicitly defined. As with keys, types can be\nmodified by applying changes to their corresponding attributes.\nThe terminology used to define the taxonomy of changes will be introduced next. Let T\nbe the set of schema types belonging to a schema, and let E be the set of entity types E =\n{Ei}, i = 1 . . . n, T = E in the case of aggregate-based stores, while T = E ∪ R, where\nR = {Ri}, i = 1 . . . m denotes the set of relationship types, in the case of graph stores.\nEach schema type t ∈ T includes a set of structural variations Vt = {vt\n1, vt\n2, . . . , vt\nn\n}, with\nvt\ni.features denoting the set of features of a variation vt\ni. Then, the set of features of a schema\ntype t is Ft =\n∪ni\n=1 vt\ni.features, which will include attributes, aggregates, and references, and\nCt ⊂ Ft denotes the set of common features of a type t. We will use dot notation to refer to\nparts of a schema element, e.g., given an entity type e, e.name and e.features refer to the name\nand set of features (Fe), respectively, of the entity type.\nThe proposed taxonomy is shown in Table 6.1. In a similar way to [CMDZ13], we have\nadded operations taking into account a compromise between atomicity, usability, and reversibility.\nIn the case of changes affecting variations, usefulness and atomicity have prevailed\non reversibility. Each SCO is defined by an identifying name, together with information regarding\nthe gaining or loss of information the operation causes on the schema, denoted by a\nCs notation as follows:\n• C+ denotes a SCO that carries an additive change.\nExample: Add Schema Type\n108\n• C− is used for SCOs that carry a subtractive change.\nExample: Delete Feature\n• C+,− denotes a SCO in which there is a gain of information for a specific element and\na loss of information for other specific element.\nExample: Move Feature\n• C= means there is no change in the schema information.\nExample: Rename Schema Type.\n• C+|− is a change that adds or subtracts information, depending on the specific operation\nparameters.\nExample: Cast Attribute to boolean.\nAs noted in [CMDZ13], a schema change operation can be considered a function whose\ninput is a schema S and a database D conforming to it and produces as output a modified\nschema S′ and the database D′ that results of updating D to conform to S′. In this paper,\nthe schema operation semantics is defined in form of pre and postconditions, which appear\nin the second and third column. Note that the postconditions only specify the changes on\nthe schema and not the changes on the database, because these depend on the concrete data\nmodel. Since the operations semantics would be expressed very similarly to specifying the\ndatabase change, this semantics is not included here, but we have added a comment to the\npostcondition of the Adapt operation to show that its effect is different to the Delvar operation.\nAs Table 6.1 shows, taxonomy operations are classified in six categories corresponding\nto the U-Schema elements previously listed: Schema Types, Structural Variations, Features,\nAttributes, References and Aggregates.\nFor Schema Type, the basic, atomic operations Add, Delete, and Rename are provided, along\nwith three complex operations to create new schema types: (i) The Extract operation creates a\nnew schema type by copying some of the features of an existing schema type, and leaving the\noriginal schema type unmodified. (ii) The Split operation divides an existing schema type into\ntwo new schema types by separating its features into two subsets, and the original schema type\nceases to exist. And (iii) the Merge operation can be understood as the inverse of the previous\noperation: a new schema type is created as the union of two existing ones, which are removed\nafterwards.\n109\nPrecondition Postcondition\nSchema Type Operations\n(Entity Type and Relationship Type)\nAdd C+ Let t be a new schema type, t /∈\nT t ∈ T\nDelete C−\nGiven a schema type t ∈ T t /∈\nT\nRename C= Given a schema type t ∈ T and a string value n, n /∈\nT.names t.name = n\nExtract C+,= Given a schema type t ∈ T, a set of features fs ⊂ Ft and a string\nvalue n /∈\nT.names\nt ∈ T ∧ t1 = T.new ∧ t1.name = n ∧\nt1.features = fs\nSplit* C= Given a schema type t ∈ T, two sets of features fs1 ⊂ Ft∧fs2 ⊂ Ft\nand two string values n1, n2 /∈\nT.names\nt /∈\nT ∧ t1, t2 = T.new ∧ t1.name =\nn1 ∧ t1.features = fs1 ∧ t2.name = n2 ∧\nt2.features = fs2\nMerge C= Given two schema types t1, t2 ∈ T and a string value n /∈\nT.names t1, t2 /∈\nT ∧ t = T.new ∧ t.name = n ∧\nt.features = t1.features ∪ t2.features\nStructural Variation Operations\nDelvar C−\nGiven a schema type t ∈ T and a variation vt ∈ Vt vt /∈\nVt\nAdapt C= Given a schema type t ∈ T and two variations vt\n1, vt\n2\n∈ Vt vt\n1 /∈\nVt (Data is migrated from vt\n1to vt\n2)\nUnion C+ Given a schema type t ∈ T ∧ Vt ̸= {} Vt = {vm} ∧ vm.features = ∪n\ni=1vt\ni.features\nFeature Operations\n(Attribute, Reference and Aggregate)\nDelete C−\nGiven a schema type t ∈ T and a feature f ∈ Ft f /∈\nFt\nRename C= Given a schema type t ∈ T, a feature f ∈ Ft, and a string value\nn /∈\nt.features.names\nf.name = n\nCopy C+ Given two schema types t1, t2 ∈ T and a feature f ∈ Ft1 ∧f /∈\nFt2 f ∈ Ft1 ∧ f ∈ Ft2\nMove* C+,−\nGiven two schema types t1, t2 ∈ T and a feature f ∈ Ft1 ∧f /∈\nFt2 f /∈\nFt1 ∧ f ∈ Ft2\nNest C+,−\nGiven an entity type e1 ∈ E, a feature f ∈ Fe1 , and an aggregate\nag ∈ Fe1 ∧ ag.type = e2 ∧ f /∈\nFe2\nf /∈\nFe1 ∧ f ∈ Fe2\nUnnest C−,+ Given an entity type e1 ∈ E, an aggregate ag ∈ Fe1 ∧ag.type = e2,\nand a feature f /∈\nFe1 ∧ f ∈ Fe2\nf ∈ Fe1 ∧ f /∈\nFe2\nAttribute Operations\nAdd C+ Given a schema type t ∈ T, let at be an attribute, at /∈\nCt at ∈ Ct\nCast C+|−\nGiven a schema type t ∈ T, an attribute at ∈ Ft, and a scalar type st at.type = st\nPromote C= Given an entity type e ∈ E and an attribute at ∈ Fe ∧ at.key =\nFalse\nat.key = True\nDemote C= Given an entity type e ∈ E and an attribute at ∈ Fe ∧ at.key =\nTrue\nat.key = False\nReference Operations\nAdd C+ Given a schema type t ∈ T, let rf be an reference, rf /∈\nCt rf ∈ Ct\nCast C+|−\nGiven a schema type t ∈ T, a reference rf ∈ Ft, and a scalar type st rf.type = st\nMult C+|−\nGiven a schema type t ∈ T, a reference rf ∈ Ft, and a tuple (l, u) ∈\n{(0, 1), (1, 1), (0,−1), (1,−1)}\nrf.lowerBound = l ∧ rf.upperBound = u\nMorph C= Given a schema type t ∈ T and a reference rf ∈ Ft, let ag be a new\naggregate, ag /∈\nFt\nrf /∈\nFt ∧ ag ∈ Ft ∧ ag.name = rf.name ∧\nag.type = rf.type\nAggregate Operations\nAdd C+ Given an entity type e ∈ E, let ag be an aggregate, ag /∈\nCe ag ∈ Ce\nMult C+|−\nGiven an entity type e ∈ E, an aggregate ag ∈ Fe and a tuple\n(l, u) ∈ {(0, 1), (1, 1), (0,−1), (1,−1)}\nag.lowerBound = l ∧ ag.upperBound = u\nMorph C= Given an entity type e ∈ E and an aggregate ag ∈ Fe, let rf be a new\nreference, rf /∈\nFe\nag /∈\nFe ∧ rf ∈ Fe ∧ rf.name = ag.name ∧\nrf.type = ag.type\nTable 6.1: The taxonomy of schema changes for NoSQL and relational databases.\nThree operations have been defined to manipulate Structural Variations: (i) The Delvar\noperation deletes a given variation from a schema type, (ii) Adapt deletes a given variation\n110\nbut also migrates data belonging to the deleted variation to a new variation, and (iii) Union\njoins all the variations of a schema type into a single one. Since Delvar and Adapt cause the\nsame changes on the schema (a variation is deleted), a comment has been added in the Adapt\npostcondition to indicate the effect on the database.\nThe Feature category groups basic Delete and Rename operations. It also includes operations\nto: (i) Copy a feature from a schema type to another one, maintaining the feature copied\nin the original schema type; (ii) Move a feature from a schema type to another, similar to Copy\nbut deleting the feature in the original schema type after copying; (iii) Nest to move a feature\nto an aggregate; and (iv) Unnest to move a feature from an aggregate to the embedding schema\ntype.\nThe Attribute category includes operations to: (i) Add a new attribute, (ii) Cast its type to a\nnew type, (iii) Promote an attribute to key, and (iv) Demote an attribute from a key. As stated\nbefore, there is not a Key category because keys can be created and deleted by means of the\nattribute operations Add, Promote, and Demote.\nThe Reference category includes: (i) The Add operation, (ii) the Cast operation (both\nsimilar to the ones defined in the Attribute category), (iii) Mult to change the multiplicity,\nand (iv) Morph to transform a reference to an aggregate.\nFinally the Aggregate category includes operations to: (i) Add an aggregate to a schema\ntype, (ii) Mult to change an aggregate multiplicity, and (iii) Morph to swap an aggregate for a\nreference.\nAll the listed SCOs, except Split and Move, are atomic operations. This means that these\nbasic SCOs cannot be implemented as a combination of two or more other SCOs. On the\nother hand, Split and Move are non-atomic operations because they can be implemented by\nusing other SCOs (Movie is composed of a Copy and Delete feature operations, and Split can\nbe defined as two Extract and a Delete schema type operations). These two operations have\nbeen added to the taxonomy because they are recurrent operations in refactoring scenarios,\nand other approaches have considered them.\n6.3 Implementation of the Orion Language\nOrion is the language created to implement the taxonomy of changes defined on U-Schema.\nWith Orion, developers can declare and execute SCOs in a system-independent way. The\nOrion metamodel specifies the Orion grammar as an Ecore model [SBPM09]. Here, the\n111\nOrion notation will be explained by using the running example and, finally, semantics will\nbe illustrated by indicating the generated code.\n6.3.1 Concrete Syntax\nThe Orion notation allows to express SCOs like commands of a command-line language.\nTherefore, the syntax of Orion is very simple as illustrated in Figure 6.4, where an excerpt\nof its EBNF grammar is shown. The general format for the majority of operations is a keyword\ndenoting the change operation (e.g., Add or Delete) followed by another keyword to\nindicate the kind of schema element it affects (e.g., Entity or Relationship, Aggregate or\nReference), and finally a list of arguments. The whole Orion metamodel can be found in\nAppendix 10.4.1.\nThe Orion syntax has been defined to let operations be written as concise as possible. The\nlanguage has been provided with some mechanisms to ease the definitions of those operations,\nbeing some of them listed below:\n• Operations can be applied over all schema types by using the “*” wildcard.\nExample: DELETE *::name\n• Operations can define a list of parameters.\nExample: DELETE Sales::types, isActive, description\n• Operations can be applied to specific variations of a schema type.\nExample: RENAME *(v1,v3)::phone TO newPhone\n• Differences between aggregate-based systems and graph systems are expressed through\noptional parameters in some operation commands.\nExample: ADD REF requires to indicate a target entity type and a join condition, and\nhas two optional parameters: the primitive type of the references values in the case of\nan aggregated-based store, and a set of attributes for a graph store.\n• Operations can also be grouped in EBlock structures. This serves two purposes. In\ndatabases that allow transactions each EBlock will be processed as a single transaction.\nAlso, during code generation, each EBlock will be generated in a single file independently\nfrom the rest.\n112\n⟨EntityRenameOp⟩ ::= ‘RENAME’ ‘ENTITY’ ⟨SchemaTypeRenameSpec⟩\n⟨SchemaTypeRenameSpec⟩ ::= ID ‘TO’ ID\n⟨EntityAdaptOp⟩ ::= ‘ADAPT’ ‘ENTITY’ ⟨SchemaTypeAdaptSpec⟩\n⟨SchemaTypeAdaptSpec⟩ ::= ID ‘::’ ‘v’? ⟨VariationIdSpec⟩ ‘TO’ ‘v’? ⟨VariationIdSpec⟩\n⟨FeatureDeleteOp⟩ ::= ‘DELETE’ ⟨FeatureDeleteSpec⟩\n⟨FeatureDeleteSpec⟩ ::= ⟨MultipleFeatureSelector⟩\n⟨FeatureRenameOp⟩ ::= ‘RENAME’ ⟨FeatureRenameSpec⟩\n⟨FeatureRenameSpec⟩ ::= ⟨SingleFeatureSelector⟩ ‘TO’ ⟨QualifiedName⟩\n⟨FeatureNestOp⟩ ::= ‘NEST’ ⟨FeatureNestSpec⟩\n⟨FeatureNestSpec⟩ ::= ⟨MultipleFeatureSelector⟩ ‘TO’ ⟨QualifiedName⟩\n⟨AttributeCastOp⟩ ::= ‘CAST’ ‘ATTR’ ⟨AttributeOrReferenceCastSpec⟩\n⟨AttributeOrReferenceCastSpec⟩ ::= ⟨MultipleFeatureSelector⟩ ‘TO’ ⟨SinglePrimitiveType⟩\n⟨ReferenceAddOp⟩ ::= ‘ADD’ ‘REF’ ⟨ReferenceAddSpec⟩\n⟨ReferenceAddSpec⟩ ::= ‘?’? ⟨SingleFeatureSelector⟩ ‘:’ ( ⟨SinglePrimitiveType⟩ ( ‘(’ ⟨DefaultValue⟩ ‘)’ )?\n| ‘feat’ ‘by’ ID ( ‘(’ ‘v’? ⟨VariationIdSpec⟩ ( ‘,’ ‘v’? VariationIdSpec )* ‘)’ )?\n| ‘{’ ( ⟨SimpleDataFeature⟩ ( ’,’ ⟨SimpleDataFeature⟩ )* )? ‘}’ ) ( ‘?’ | ‘&’ | ‘*’ | ‘+’ ) ‘TO’ ID\n( ‘WHERE’ ⟨ConditionDecl⟩ )?\n⟨SingleFeatureSelector⟩ ::= ( ID ( ‘(’ ‘v’? ⟨VariationIdSpec⟩ ( ‘,’ ‘v’? ⟨VariationIdSpec⟩ )* ‘)’ )?\n| ‘*’ ) ‘::’ ⟨QualifiedName⟩\n⟨MultipleFeatureSelector⟩ ::= ( ID ( ‘(’ ‘v’? ⟨VariationIdSpec⟩ ( ‘,’ ‘v’? ⟨VariationIdSpec⟩ )* ‘)’ )?\n| ‘*’ ) ‘::’ ⟨QualifiedName⟩ ( ‘,’ ⟨QualifiedName⟩ )*\n⟨ConditionDecl⟩ ::= ⟨QualifiedName⟩ ‘=’ ⟨QualifiedName⟩\n⟨QualifiedName⟩ ::= ID ( ‘.’ ID )*\n⟨VariationIdSpec⟩ ::= INT\nFigure 6.4: EBNF excerpt of the Orion language.\nFigure 6.5 shows an Orion script that applies changes on the GameTracker schema of Figure\n6.3. An Orion script starts with a USING statement that indicates the schema on which\nthe changes are applied. This declaration allows runtime checking of the validity of each operation\non the current schema. Note that the schema has to be updated after the execution of\neach operation of the script, so that the checking can be correctly performed. The operations\nare, therefore, sequentially executed.\nThe aforementioned script of Figure 6.5 shows changes on several entity types of the\n113\nschema in a refactoring scenario, illustrating most of the different changes in the taxonomy.\nTo ease its understanding, operations have been separated according to their categories. First,\nwe used Add to create a new root entity type, Guild, with four initial attributes. Then we\nused Rename to change the name of Player to GamePlayer. Please note that from now on,\noperations will need to refer to this entity type by its new name, as in the following Adapt operation\nused to reduce the number of variations in GamePlayer to a single variation, updating\nthe data belonging to the variation dissapearing.\nThen, we Deleted a single feature and Renamed another one. After that, we Nested and\nUnnested some features to/from GamePlayer and its user_data aggregate.\nAfter that, we applied some Attribute operations by using Add to create two new\nfeatures in Player_Data (surname and homepage), we used Cast to change two features\nto a Double type for every entity type (score and points), another Cast for\nAch_Summary.is_completed to Boolean, and a final Promote in Guild.code to add a feature\nto an entity type key.\nFinally we applied some Aggregate operations: We Added a new aggregate for Guild with\nfive attributes creating a new non-root entity type named Realm, and a new non-root entity\ntype named Address embedded by Player_Data. After that, we changed the multiplicity\n(Mult operation) of this last aggregate from one to one to one to many, and then we used Morph\nto change the embedded GamePlayer.user_data to a reference, changing the corresponding\nnon-root entity type to a root entity type and renaming the feature to user_private_data.\n6.3.2 Semantics: Schema and Data Update\nThe Orion semantics can be expressed through the changes that each operation causes in the\nexisting schema and stored data. In our case, these semantics are given by the Orion engine\nthat modifies the U-Schema model and translates Orion scripts into database operations for\nupdating data to the modified schema. The Orion engine has a component for each of these\ntwo tasks: The Schema Updater and the Data Updater, as shown in Figure 6.6.\nThe Schema Updater takes an Athena model (i.e., a schema) and an Orion model as input,\nand outputs the updated schema. To do so, the input schema is taken as a starting point,\nand each Orion operation is sequentially applied to that schema, with the semantics shown\nin Section 6.2. This process is implemented as a model to model transformation which assures\nplatform-independence. It also has to be executed along with the Data Updater, to assure\n114\nGameTracker_ops operations\nUSING GameTracker:1\n// Schema Type operations\nADD ENTITY Guild: { +id: Identifier, code: String, name: String, num_players: Number }\nRENAME ENTITY Player TO GamePlayer\nADAPT ENTITY GamePlayer::v2 TO v1\n// Feature operations\nDELETE Achievement::is_active\nRENAME Ach_Summary::completed_at TO is_completed\nNEST GamePlayer::reputation, suspended TO Player_Data\nUNNEST GamePlayer::user_data.email\n// Attribute operations\nADD ATTR Player_Data::surname: String\nADD ATTR Player_Data::homepage: String\nCAST ATTR *::score, points TO Double\nCAST ATTR Ach_Summary::is_completed TO Boolean\nPROMOTE ATTR Guild::code\n// Aggregate operations\nADD AGGR Guild::realm: {\nnum_guilds: Number, max_guilds: Number, num_players: Number, max_players: Number, type: String\n}& AS Realm\nADD AGGR Player_Data::address: { country: String, city: String }& AS Address\nMULT AGGR Player_Data::address TO +\nMORPH AGGR GamePlayer::user_data TO user_private_data\nFigure 6.5: Operations applied to the GameTracker schema using Orion.\nthe correctness of the data to be adapted, or can be executed as a standalone process to study\nschema evolution.\nWhile we implemented a single Schema Updater, as it is independent of any database and\nworks at a logical level, the Data Updater is bound to a specific database, so a different data\nupdater must be implemented for each supported system. In our case, we have developed\ndata updaters for MongoDB, Cassandra, and Neo4j. With this choice, we covered document,\ncolumnar, and graph NoSQL data models, and we support the three most widely used\nNoSQL stores on their own paradigm.\nA data updater receives an Athena and Orion model as input, and generates the piece of\ndatabase-specific code that applies the necessary changes on the database according to the operations\nspecified in the Orion script. Therefore, this process consists of a model to text transformation.\nIn the case of MongoDB, the data updater generates native MongoDB commands and\nstores them in a Javascript file. Since MongoDB does not have to declare an explicit schema,\n115\nFigure 6.6: The Orion engine developed to handle schema and data updates.\nin order to apply changes, documents belonging to the desired entity type have to be selected.\nTo improve performance, Orion analyzes the scripts and optimizes operations that can be\napplied sequentially on the same entity type, stacking them together into a single bulk write\ninstruction. Some complex operations, however, do not allow that optimization, and they\nmust be executed in their own aggregation pipeline. An example of this can be seen in Figure\n6.8, where operations Nest and Unnest are applied on the same entity type (GamePlayer)\nand therefore can be stacked, then a Cast over all entity types is applied, and finally an Add\naggregation and a Mult aggregation are also stacked together in a single bulk write.\nIn Cassandra, CQL (Cassandra Query Language) instructions are generated to perform the\ndata update. Due to Cassandra declaring an explicit schema, evolution changes are restricted.\nTo implement some of these operations it is necessary to export the data to an external file,\nchange the schema and import the data back.\nIn Figure 6.9 some generated operations for Cassandra are shown. Here, the Rename\nentity instruction stores the table on an external file before recreating that table with a\nnew name. However other instructions such as Delete feature are performed directly. Finally,\na Promote attribute operation also relies on storing the table elsewhere but this time\n116\nSchema GameTracker:2\nRoot entity GamePlayer {\nCommon {\n+ id: Identifier,\nnickname: String,\navatar_url: String /^https/,\nstatus: Integer ( 0 .. 5 ),\nlast_activity: Timestamp,\nuser_private_data: Ref<Player_Data>&,\nplayer_Data: Aggr<Player_Data>&,\nemail: String /^.+@.+\\\\.com$/\n}\nVariation 1 {\nexperience: Double,\nhours_played: Double,\nach_earned: Aggr<Ach_Summary>+,\nscore: Double\n}\n}\nRoot entity Player_Data {\n+ id: Identifier,\ncountry_code: Integer,\nname: String,\n? birthday: Timestamp,\nreputation: Double,\nsuspended: Boolean,\nsurname: String,\nhomepage: String,\naddress: Aggr<Address>+\n}\nEntity Ach_Summary {\nachievement: Ref<Achievement>&,\nof_the_day: Boolean,\n? is_completed: Boolean,\n? points: Double\n}\nRoot entity Achievement {\n+ id: Identifier,\ncategories: List<String>,\ndescription: String,\npoints: Double\n}\nRoot entity Game {\n+ id: Identifier,\nachievements: Ref<Achievement>+,\ndate_from: Timestamp,\ngenres: List<String>,\ntitle: String,\n? description: String,\n? max_players: Integer\n}\nRoot entity Guild {\n+ id: Identifier,\n+ code: String,\nname: String,\nnum_players: Number,\nrealm: Aggr<Realm>&\n}\nEntity Realm {\nnum_guilds: Number,\nmax_guilds: Number,\nnum_players: Number,\nmax_players: Number,\ntype: String\n}\nEntity Address {\ncity: String,\ncountry: String\n}\nFigure 6.7: The updated GameTracker Athena schema after applying the SCOs.\ncolumns need to be stored in an appropriate order to assure the primary key is created succesfully.\nThe Neo4j data updater uses the Cypher language to generate code for updating data.\nGiven its graph nature, Neo4j is also able to handle relationship types and, therefore, allows\nthe full set of schema type operations to be implemented for relationships. The schemaless\nnature of Neo4j also allows the database to be updated in a similar way to MongoDB: (i) Selecting\nall nodes belonging to the entity type to be modified and (ii) applying the desired change.\nThis also allows to stack together changes to the same schema type, reducing the overhead of\nthe change.\nFigure 6.10 shows how some operations would be generated for Neo4j. First, a Rename\n117\nGameTracker.GamePlayer.bulkWrite([\n// NEST GamePlayer::reputation, suspended TO Player_Data\n{updateMany: {filter: {}, update: {$rename: { \"reputation\": \"user_data.reputation\",\n\"suspended\": \"user_data.suspended\"}}}},\n// UNNEST GamePlayer::user_data.email\n{updateMany: {filter: {}, update: {$rename: { \"user_data.email\": \"email\"}}}}\n])\n// CAST ATTR *::score, points TO Double\nGameTracker.getCollectionNames().forEach(function(collName) {\nGameTracker[collName].updateMany({}, [\n{$set: { \"score\" : { $convert: { input: \"$score\", to: 1 }},\n\"points\": { $convert: { input: \"$points\", to: 1 }}\n}}])\n})\nGameTracker.Player_Data.bulkWrite([\n// ADD AGGR Player_Data::address: { country: String, city: String }& AS Address\n{updateMany: {filter:{}, update: [{$addFields: {\"address\": {\"country\": \"\", \"city\": \"\"}}}], upsert: true}},\n// MULT AGGR Player_Data::address TO +\n{updateMany: {filter: {}, update: [{$set: { \"address\": [ \"$address\" ] }}]}}\n])\nFigure 6.8: An example of operations generated by the Orion engine for MongoDB.\n// RENAME ENTITY Player TO GamePlayer\nCOPY player TO 'tmp.csv' WITH HEADER = TRUE;\nDROP TABLE player;\nCREATE TABLE IF NOT EXISTS gameplayer (\nid uuid,\nach_earned list<frozen<ach_summary>>,\navatar_url text,\nexperience double,\nhours_played double,\nlast_activity timestamp,\nnickname text,\nreputation double,\nscore int,\nstatus int,\nsuspended boolean,\nuser_data player_data,\nPRIMARY KEY (id)\n);\nCOPY gameplayer FROM 'tmp.csv' WITH HEADER = TRUE;\n// DELETE Achievement::is_active\nALTER TABLE achievement DROP ( is_active );\n// PROMOTE ATTR Guild::code\nCOPY guild (\nid,\ncode,\nname,\nnum_players\n) TO 'tmp.csv' WITH HEADER = TRUE;\nDROP TABLE guild;\nCREATE TABLE guild (\nid uuid,\ncode text,\nname text,\nnum_players varint,\nPRIMARY KEY (id, code)\n);\nCOPY guild FROM 'tmp.csv' WITH HEADER = TRUE;\nFigure 6.9: CQL code generated by the Orion engine for some operations in Cassandra.\nentity and a Adapt entity are applied. Since in Neo4j aggregations are not handled, the\nfield GamePlayer.ach_earned is ignored in Cypher. Then, a Delete feature operation is\napplied to each node matching a certain label containing the name of the entity type being\nmodified. Finally, a Cast attribute operation is applied to each node independently of its\nlabel (which indicates its entity type) and also to each relationship in the graph.\n118\n// RENAME ENTITY Player TO GamePlayer\nMATCH (x: Player)\nREMOVE x: Player\nSET x: GamePlayer\n;\n// ADAPT ENTITY GamePlayer::2 TO 1\nMATCH (x: GamePlayer) WHERE\nx.experience IS NULL AND\nx.hours_played IS NULL AND\nx.ach_earned IS NULL AND\nx.score IS NULL\nSET x.experience = 0.0,\nx.hours_played = 0.0,\nx.score = 0\n;\n// DELETE Achievement::is_active\nMATCH (x: Achievement)\nREMOVE x.is_active\n;\n// CAST ATTR *::score, points TO Double\nMATCH (x)\nSET x.score = toFloat(x.score),\nx.points = toFloat(x.points)\n;\nMATCH ()-[x]->()\nSET x.score = toFloat(x.score),\nx.points = toFloat(x.points)\n;\nFigure 6.10: Cypher code generated by the Orion engine for some operations in Neo4j.\nFor each Orion operation, the instructions issued by the data updater for particular supported\ndatabases are summed up in Table 6.2. There, some keywords give insight of how\neach operation is implemented, and also which operations cannot be executed in a particular\ndatabase. For example, since in Neo4j aggregations are not handled, operations regarding\naggregations are not supported.\n6.4 Validation\nTwo kinds of validations have been carried out. The semantics of SCOs of the proposed taxonomy\nhave been formally validated by using Alloy. Also, the feasibility or applicability of the\nchanges has been evaluated by measuring execution times for the three currently supported\nNoSQL systems.\n6.4.1 Validating the Taxonomy\nAlloy 5* has been used to implement each schema change based on its pre and postconditions.\nThis has been achieved by applying a three step process in which (i) U-Schema concepts and\ntheir restrictions have been modeled, (ii) operations implementing the taxonomy have been\ndefined, and then (iii) checks for contradictions have been implemented for each operation.\nEach step will be detailed below.\n*https://alloytools.org/.\n119\nThe U-Schema metamodel has been modeled in Alloy by using signatures. In Figure 6.11\nan excerpt of U-Schema is shown, consisting of two parts: (i) Entities and relationships field\ndeclarations, which are a set of Entity types and Relationship types, and (ii) a set of facts implementing\nrestrictions that any U-Schema model must fulfill, such as: (i) A schema must contain\nat least one entity type or one relationship type, (ii) there cannot be two different entity types\nwith the same name, and (iii) each reference to a schema type must belong to the same schema\nas that schema type. Once the U-Schema specification is defined, Alloy is capable of searching\nfor scenarios that fulfill all the provided restrictions.\nsome sig USchema\n{\nentities: set EntityType,\nrelationships: set RelationshipType\n}{\nsome entities or some relationships\nentities.parents in entities\nrelationships.parents in relationships\nsome e: entities | e.root = True\nall e1, e2: entities | e1.name = e2.name => e1 = e2\nall r1, r2: relationships | r1.name = r2.name => r1 = r2\nall ref: entities.variations.features + relationships.variations.features\n| ref.refsTo in entities\nall aggr: entities.variations.features + relationships.variations.features\n| aggr.aggregates in entities.variations\n}\nFigure 6.11: An excerpt of the U-Schema definition in Alloy.\nFigure 6.12 shows a scenario found by Alloy in which a U-Schema instance is composed\nof two entity types, EntityType0 and EntityType1, both of them roots. The first entity type\ncontains a structural variation with two features, Attribute0 and Attribute2, named Feature-\nName1 and FeatureName0, and both of them of a PrimitiveType. The second entity type\ncontains also a structural variation but with only one attribute, Attribute1 with name FeatureName1,\nalso of a PrimitiveType.\nThe next step is to model the change operations in the taxonomy as Alloy operations, by\nusing predicates that may be applied over instances of U-Schema elements. Each operation\nshows the same structure: (i) It checks that input parameters do meet the preconditions, and\nthen (ii) it matches the changes to be reflected on the output parameters.\nIn Figure 6.13, the Rename Entity operation is implemented. Its precondition is declared in\nthe same way as it was defined in Table 6.1, newName not in schemaI.entities.name, and\n120\nFigure 6.12: A U-Schema instance found by Alloy.\npred Operation_RenameEntity [schemaI, schemaO: USchema,\nentityI, entityO: EntityType, newName: SchemaTypeName]\n{\nentityI in schemaI.entities and entityO not in schemaI.entities\n// Precondition check: n /∈\nT.names\nnewName not in schemaI.entities.name\nentityO.name = newName\nentityO.root = entityI.root\nentityO.parents = entityI.parents\nentityO.variations = entityI.variations\nschemaO.entities = schemaI.entities - entityI + entityO\nschemaO.relationships = schemaI.relationships\n}\nFigure 6.13: Alloy definition for the Rename Entity operation.\nthen several statements are defined to be fulfilled by the output schema. When this operation\nis executed in Alloy to search scenarios in which it is sucessfully applied, a scenario is found,\nwhich is shown in Figure 6.14. As can be seen, the input schema only has an entity type whose\nname changes in the output schema but its root and variations properties are the same.\nIn order to check the operation for contradictions, we use a Check statement. This check\nis an implication in which if the designed operation is applied to a valid scenario, then some\nconditions need to be assured, i.e., the operation postconditions. In Figure 6.15 the check\nstatement for the Rename Entity operation is shown. Here, it is checked that applying the\n121\nFigure 6.14: One of the Rename Entity scenarios found.\noperation to a given scenario, the postcondition, entityO.name = newName will be fulfilled.\nApplying this check means that Alloy tries to find a scenario in which the operation is applied\nbut the implications (i.e., postconditions) are not true (counterexample), which ends with\nAlloy not finding scenarios.\nFor each operation some invariants are also checked: (i) For each schema type operation, we\ncheck that the involved schemas, without the affected entities, remain unchanged, and (ii) for\neach feature operation, we check the first invariant and also that the involved entity or entities,\nwithout the affected features, also remain unchanged. Applying this check means that Alloy\nwill look for a scenario in which the operation is applied but the implications are not true. In\nour case, Alloy was not able to find any contradictory scenario.\nTherefore, we concluded that preconditions were consistent and postconditions were valid.\nThe usage of Alloy also served to refine with additional preconditions certain operations, such\nas Extract/Split/Merge Entity, which were not consistent at the beginning of the process. It\nalso showed the importance of including invariants in the metamodel.\n122\nCheck_Operation_RenameEntity: check\n{\nall schemaI, schemaO: USchema, entityI, entityO: EntityType, newName: SchemaTypeName |\nOperation_RenameEntity[schemaI, schemaO, entityI, entityO, newName] =>\n// Postcondition check: t.name = n\nentityO.name = newName\n// Invariant check: Everything else remains the same.\nand CheckSchemaEquality[schemaI.entities - entityI, schemaO.entities - entityO,\nschemaI.relationships, schemaO.relationships]\n} for 10\nFigure 6.15: Postcondition checking of the Rename Entity operation.\n6.4.2 Measuring Performance of Orion Operations\nTo evaluate the feasibility of each implemented operation, we created the following scenario\nfor each database system considered. First, we defined a schema with several root entity\ntypes: One entity type per group of operations (features, attributes, references, and aggregates),\nand one entity type per schema type operation, each one of them with the same number\nof features. Then, by using the Deimos language described in Chapter 7, we generated a\ndataset of 150,000 instances per entity type conforming to that schema. After that, we defined\na process to inject this dataset into a MongoDB, Cassandra, and Neo4j database. Then, we\napplied several standard queries to warm up the database and let it fill its caches. The designed\nwarm up queries do scan the entire database looking for non-existing values on non-indexed\nfields.\nIn order to provide a meaningful expression of the feasibility of the implemented SCOs, we\ndid not measure absolute times. Instead, we used a modification operation opmod to normalize\nthe obtained times. This opmod operation modifies a field that is not indexed, so the database is\nnot optimized for it and results are more reliable. In the third step, opmod is applied on all the\ninstances of a certain entity type. Note that an update operation is preferred over a standard\nquery because we are measuring operations modifying the database.\nThe final step consisted on executing each operation independently to measure its execution\ntime. To do so, we defined three blocks to execute: (i) Entity type operations, (ii) feature,\nattribute, reference, and aggregate operations, and (iii) relationship type operations, if applicable.\nSince operations are executed individually, it is not possible to take advantage of certain\nmechanisms such as stacking operations together, which is relevant in the case of, for example,\nMongoDB. This whole process was repeated five times to get a reliable mean time. Given the\ndifferent nature of each database system considered, the opmod operation is slightly different\n123\nfor each one of them.\nTable 6.2 shows the different execution times for each taxonomy operation performed over\neach of the considered NoSQL systems. The table includes two columns for each system, one\nshows a summary of the native code performed and the other the execution time multiplied\nby a factor that is the execution time for the opmod operation on MongoDB, Cassandra and\nNeo4j, which are denoted as tM, tC and tN, respectively.\nMongoDB operations performed as expected because the majority of them scan over a single\nentity type (Delete, Unnest or Cast), so their ratio is close to 1×tM and only a couple of\noperations such as Copy or Morph do require additional scans (or an explicit join) and, therefore,\nare much more costly. As was explained in Section 6.2, although Delvar and Adapt are\nsemantically equal, they are implemented differently because the former removes instances belonging\nto a variation and the latter transforms those instances to a new variation by adding\nand/or deleting fields.\nCassandra operations do not show huge performance differences between them, although\nthe ones with the Copy command are the most costly. As explained in Section 6.3, these operations\nare the ones that were implemented by means of an export/import to an external file.\nThese tables were of only five fields, but it is foreseeable that their performance would drop if\ntables had more fields. It is also important to note that CSV manipulation on the most costly\noperations was not included in the measurement.\nFinally, Neo4j operations behaved in a similar way as in MongoDB, although certain relationship\noperations (Split, Merge, and Union) performed worse than other relationship\noperations because they not only affect single relationships but also involve creating new relationships\nbetween nodes and filling their fields.\n6.5 Evaluation of the Proposed Language\nWe evaluated Orion and its engine by applying it to three different case studies. In these case\nstudies we will apply refactoring processes to databases, consisting on a succession of SCOs\ndefined in Orion with the purpose of updating schema and data. Database refactoring is an\nactivity aimed to improve the database design and performance without changing its semantics\n[AS06]. A refactoring is a small change on the schema, and several refactorings can be\napplied to achieve a determined improvement.\n124\nMongoDB tM Cassandra tC Neo4j tN\nEntity type Operations\nAdd createCollection(),$addFields 0.01 CREATE table 0.21 CREATE,MATCH,SET node 0.37\nDelete drop() 0.01 DROP table 0.37 MATCH,DELETE node 1.12\nRename renameCollection() 0 2×(COPY,DROP,CREATE) table 2.86 MATCH,REMOVE,SET node 1.89\nExtract $project,$out 0.31 2×COPY table,CREATE table 2.25 MATCH,CREATE node 2.92\nSplit 2×($project,$out),drop() 0.63 (4×COPY,2×CREATE,DROP) table 4.44 MATCH,2×CREATE,DELETE node 6.55\nMerge 2×$merge,2×drop() 4.95 (4×COPY,CREATE,2×DROP) table 4.72 2×MATCH,CREATE,2×DELETE node 8.29\nDelvar remove() 0.38 — — MATCH,DELETE node 1.42\nAdapt $unset,$addFields 0.70 — — MATCH,REMOVE,SET node 1.95\nUnion $addFields 1.40 — — MATCH,SET node 8.44\nRelationship type Operations\nAdd — — — — — —\nDelete — — — — MATCH,DELETE rel 2.43\nRename — — — — MATCH,apoc.refactor.setType rel 0.22\nExtract — — — — MATCH,CREATE rel 5.43\nSplit — — — — MATCH,2×CREATE rel 10.99\nMerge — — — — 2×MATCH,CREATE,2×DELETE rel 13.84\nDelvar — — — — MATCH,DELETE rel 0.84\nAdapt — — — — MATCH,REMOVE,SET rel 0.76\nUnion — — — — MATCH,SET rel 15.93\nFeature Operations\nDelete $unset 1.08 DROP column 0.22 MATCH,REMOVE field 0.78\nRename $rename 1.22 2×COPY table,DROP column,ADD column 2.07 MATCH,SET,REMOVE field 2.03\nCopy $lookup,$addFields,$addFields,$out 4.06 2×COPY table,ADD column 2.21 2×MATCH,SET field 2.24\nMove $lookup,$addFields,$addFields,$out,$unset 5.09 2×COPY table,ADD column,DROP column 2.30 2×MATCH,SET,REMOVE field 3.31\nNest $rename 1.27 — — — —\nUnnest $rename 1.30 — — — —\nAttribute Operations\nAdd $addFields 1.35 ADD column 0.21 MATCH,SET field 0.76\nCast $set 1.31 2×(COPY,DROP,CREATE) table 3.06 MATCH,SET field 1.50\nPromote — — 2×(COPY,DROP,CREATE) table 3.08 CREATE constraint UNIQUE 4.12\nDemote — — 2×(COPY,DROP,CREATE) table 3.08 DROP constraint 0.03\nReference Operations\nAdd $lookup,$addFields,$out 4.09 ADD column,2×COPY table 2.04 2×MATCH,CREATE rel 5.39\nCast $set 1.46 2×(COPY,DROP,CREATE) table 3.07 — —\nMult $set 1.41 — — — —\nMorph $lookup,$addFields,$out,$unset 4.95 — — — —\nAggregate Operations\nAdd $addFields 1.43 CREATE type,ADD column 0.24 — —\nMult $set 1.45 — — — —\nMorph insert(),save() 34.08 — — — —\nTable 6.2: Implementation and performance of the SCOs.\n6.5.1 A StackOverflow Refactoring in Neo4j\nIn this case study, Orion has been used to apply a refactoring to a Neo4j database that imported\nthe StackOverflow dataset [Sta14]. We injected the dataset into Neo4j but changed\nit slightly during injection to take advantage of relationship types. In StackOverflow, the\nComment entity type references its User and a Post in a one to one relation, so we injected this\ndatabase transforming the Comment entity type as a relationship type named Rel_Comments\nbetween Users and Posts. After injecting the dataset into Neo4j, we inferred the schema,\n125\nobtained the corresponding U-Schema and transformed it to an Athena schema.\nFigure 6.16: Excerpt of the StackOverflow schema injected in Neo4j.\nFigure 6.16 shows an excerpt of the inferred schema with two of the seven entity types\ndiscovered and the already mentioned new relationship type. Here, Posts and Users are\nshown as union entity types listing their required and optional features, because they contain\ntoo many variations to be visualized. Users references Posts by rel_comments, a reference\nwith attributes that belongs to Rel_Comments. Rel_Comments has four required features\n(ContentLicense, CreationDate, PostId and Score) and five structural variations each\nwith a different set of additional features.\nAnalyzing the schema, we realized that the newly created relationship type could be improved\nby casting some types of attributes to specific Neo4j types, adding new fields or copying\nfields from Users and Posts to the relationship type. Also, injecting an entity type as a\n126\nrelationship type caused that some attributes in Rel_Comments turned obsolete and could be\ndeleted. In this way, by slightly changing the schema, query performance could be improved.\nThe proposed refactoring can be divided into two blocks: (i) Applying operations to some\nfields of Users and Posts to improve query performance over them, and (ii) applying operations\nover the newly created Rel_Comments to improve its expressiveness.\nStackOverflow_neo4j_ops operations\nUsing stackoverflow_neo4j:1\nCAST ATTR *::CreationDate, LastAccessDate TO Timestamp\nMULT REF Posts::Tags TO +\nCOPY Posts::PostTypeId TO Rel_Comments::CommentTypeId WHERE id=PostId\nCOPY Users::Reputation TO Rel_Comments::UserReputation WHERE id=UserId\nUNION RELATIONSHIP Rel_Comments\nADD ATTR Rel_Comments::LastEditDate: Timestamp\nADD ATTR Rel_Comments::KarmaCount: Number\nCAST ATTR Rel_Comments::Score TO Double\nDELETE Rel_Comments::PostId, UserId\nRENAME RELATIONSHIP Rel_Comments TO comments\nFigure 6.17: Operations applied to the StackOverflow schema and data in Neo4j.\nThe Orion script to refactor the StackOverflow schema is shown in Figure 6.17. Firstly,\nsome Cast operations are performed to convert certain fields stored as strings to timestamps.\nThese casts are performed against every schema type containing the CreationDate and\nLastAccessDate features, which are all three schema types shown. Then, a Mult operation\nto allow the possibility for a post to hold more than one tag, and two Copy operations to move\na couple of attributes from Users and Posts to each Comment between them, in order to get\nquick access to those fields. Operations regarding Rel_Comment include a Union in order to\nmaintain only a single variation and make all the features mandatory, two Add Attribute operations\nto create new features, a Cast over a feature that should be of double type, and two\nDelete operations over the two PostId and UserId carried from the injection that now are\nuseless since the relationship itself stores that information. Finally, we performed a Rename\nRelationship to change the Rel_Comments name to a more suitable comments name for a\nrelationship.\nGiven this script and the Athena schema, the Orion engine generates the updated schema\nand the Cypher code script to execute the changes on the data. In Figure 6.18 an excerpt\nof the generated code can be seen. First, some Add operations are shown, which make use\n\nof native Cypher functions to create default values (such as in datetime()). Then the Cast\noperation is applied, which uses the function toFloat to cast a feature to a type. After that, a\nDelete operation is applied to all entity types and also relationship types, and finally a Rename\nRelationship is implemented by making use of the Neo4j APOC library.†\n// ADD ATTR Rel_Comments::LastEditDate: Timestamp\nMATCH ()-[x: Rel_Comments]->()\nSET x.LastEditDate = datetime()\n;\n// ADD ATTR Rel_Comments::KarmaCount: Number\nMATCH ()-[x: Rel_Comments]->()\nSET x.KarmaCount = 0\n;\n// CAST ATTR Rel_Comments::Score TO Double\nMATCH ()-[x: Rel_Comments]->()\nSET x.Score = toFloat(x.Score)\n;\n// DELETE *::PostId, UserId\nMATCH (x)\nREMOVE x.PostId, x.UserId\n;\nMATCH ()-[x]->()\nREMOVE x.PostId, x.UserId\n;\n// RENAME RELATIONSHIP Rel_Comments TO comments\nMATCH ()-[x: Rel_Comments]->()\nCALL apoc.refactor.setType(x, 'comments')\nYIELD input, output RETURN *\n;\n\n6.5.2 A StackOverflow Refactoring in MongoDB\nIn this second case study, as an alternative to the first refactoring case the StackOverflow\ndataset [Sta14] was injected into a MongoDB database. We did not apply any change during\nthe injection this time. Unlike the previous case, we could not inject an entity type as a relationship,\nbut instead planned to take advantage of constructs typical to document databases,\nsuch as aggregations, since we already knew that this dataset only relies on references between\nentity types.\nOnce the dataset was injected, we obtained the U-Schema model and the equivalent Athena\nschema. As is shown in Figure 6.19, this time we focused on Posts and Users, their relationships\nwith Postlinks and Badges, and how a post does not store its links, it is a postlink that\nstores to which post it is associated, and the same case applies to a user and its badges.\nA useful refactoring case would consist on embedding, for each post, its corresponding\npostlinks, and for each user its corresponding badges. To do so we implemented the Orion\nscript shown in Figure 6.20. In this script, first, the same CAST and MULT operations are applied\nas in the previous refactoring case, showing that these operations can be applied to both\ndatabases. After that, we used some NEST operations on Posts and Users to create new ag-\n†https://neo4j.com/developer/neo4j-apoc/.\n\ngregated objects (PostMetadata and UserMetadata) where similar features are stored. We\nalso embedded Postlinks into Posts and Badges into Users by using ADD REF and MORPH.\nThis is not a trivial operation since there is no direct reference between a post and its postlinks.\nInstead, such reference needs to be created by providing a join condition that uses the reference\nbetween a postlink and its post. Once this reference is created, it can be swapped for an\naggregation, removing the _id field from the embedded object and the Postlinks collection.\nThe same principle applies to Users and Badges.\nAn excerpt of the JS code script generated by the Orion engine is displayed in Figure 6.21.\nHere, the operations that aggregate Postlinks into Posts are displayed: (i) An inverse reference\nbetween the two entity types is created by using a lookup operation. A temporal index is\ncreated beforehand to accelerate the process and it is dropped afterwards. (ii) Then this reference\nis swapped into an aggregation by using another lookup operation. The final instructions\nremove the newly created reference, since in Orion the rmId option was specified, and then\n\nStackOverflow_mongodb_ops operations\nUSING stackoverflow_mongodb:1\nCAST ATTR *::CreationDate, LastAccessDate TO Timestamp\nCAST ATTR Posts::LastActivityDate TO Timestamp\nMULT REF Posts::Tags TO +\nNEST Posts::CreationDate, LastActivityDate TO PostMetadata\nNEST Users::CreationDate, LastAccessDate, DownVotes, UpVotes TO UserMetadata\nADD REF Posts::postlinkIds: String* TO Postlinks WHERE Posts._id = Postlinks.PostId\nMORPH REF Posts::postlinkIds (rmId rmEntity) TO postlinks\nADD REF Users::badgeIds: String* TO Badges WHERE Users._id = Badges.UserId\nMORPH REF Users::badgeIds (rmId rmEntity) TO badges\nFigure 6.20: Operations to be applied to StackOverflow in MongoDB.\nthe whole Postlinks collection is dropped, as specified by the rmEntity option in the Orion\nscript.\n// ADD REF Posts::postlinkIds: String* TO Postlinks WHERE Posts._id = Postlinks.PostId\nstackoverflow_mongodb.Postlinks.createIndex({Postlinks.PostId: 1}, {name: \"TEMP_INDEX\"})\nstackoverflow_mongodb.Posts.aggregate([\n{ $lookup: { from: \"Postlinks\", localField: \"_id\", foreignField: \"PostId\", as: \"postlinkIds\" }},\n{ $addFields: { \"postlinkIds\": \"$postlinkIds._id\"}},\n{ $out: \"Posts\" }\n])\nstackoverflow_mongodb.Postlinks.dropIndex(\"TEMP_INDEX\")\n// MORPH REF Posts::postlinkIds ( rmId rmEntity ) TO postlinks\nstackoverflow_mongodb.Posts.aggregate([\n{ $lookup: { from: \"Postlinks\", localField: \"postlinkIds\", foreignField: \"_id\", as: \"postlinks\" }},\n{ $out: \"Posts\" }\n])\nstackoverflow_mongodb.Posts.updateMany({}, {$unset: {\"postlinkIds\": 1, \"postlinks.$[]._id\": 1}})\nstackoverflow_mongodb.Postlinks.drop()\nFigure 6.21: JavaScript code generated for some operations in MongoDB.\nOnce the update script is executed, each post contains an aggregation array with its own\npostlinks, and each user contains an array of its own badges, so there is no need to join these\ncollections to retrieve the information.\n\n6.5.3 Outlier Migration in Reddit\nIn this last case study, we remove outliers in the Reddit dataset [Red18]. As will be explained\nin Chapter 8, an outlier variation is any variation with an abnormally low number of objects\nbelonging to it compared with the total number of objects belonging to the rest of variations\nof an entity type. In that same chapter, a process devised to detect outliers is described, and\nhere the outlier variations will be updated to regular variations by using Orion.\nThis dataset was injected into MongoDB, and its schema was inferred to obtain its corresponding\nU-Schema, and transformed to an Athena schema to be provided to the Orion\nengine. For this case scenario, the Comments entity type was considered, with more than 850\nmillion comments distributed in twenty structural variations. Figure 6.22 shows the inferred\nComment entity type, the composition of its variations as well as references to the other entity\ntypes: Authors, Moderators, and Subreddits.\nBy applying the process to detect outliers described in Chapter 8, five regular variations\nand fifteen outlier variations were detected. By using Orion, a developer can delete obsolete\ninstances belonging to old variations, as well as adapt some variations to new ones, migrating\nthe data accordingly. The developer can do so by using the Delvar and Adapt operations, as is\nshown in Figure 6.23. Here, variations {v1..4} will be deleted along with all objects belonging\nto those variations, by using the Delvar operation, and variations {v10..20} will be adapted to\nother variations, updating objects belonging to those variations by using the Adapt operation.\nAfter applying these Orion operations, the number of Comment variations will be reduced\nfrom twenty to five.\nEach of these Delvar and Adapt operations will be translated into the corresponding\nJavascript code to be executed on the MongoDB database. In Figure 6.24, an example of the\ncode generated from a Delvar operation and an Adapt operations is shown. The structure\nof both operations is fairly similar and can be divided in the following steps:\n• First, the match clause only captures instances of variation 4 or variation 11. This can\nbe achieved by checking if certain fields exist, or do not exist, for a particular variation.\nIn this case, for variation 11, features archived, distinguised, downs, edited,\nname, and score_hidden must exist, and features author_flair_css_class and\nauthor_flair_text must not exist.\n• Then, in Delvar the entire object is removed, while in Adapt features are added or\n\nremoved to make variation 11 conform to variation 5. In this case, it is neccesary to\nunset the distinguised feature.\nOnce the script is executed against the database, data is migrated, variations are removed\nand the complexity of the schema is reduced as a result.\n132\nReddit_migration operations\nUSING reddit:1\nDELVAR ENTITY Comments::v1\nDELVAR ENTITY Comments::v2\nDELVAR ENTITY Comments::v3\nDELVAR ENTITY Comments::v4\nADAPT ENTITY Comments::v10 TO v7\nADAPT ENTITY Comments::v11 TO v5\nADAPT ENTITY Comments::v12 TO v7\nADAPT ENTITY Comments::v13 TO v9\nADAPT ENTITY Comments::v14 TO v8\nADAPT ENTITY Comments::v15 TO v6\nADAPT ENTITY Comments::v16 TO v6\nADAPT ENTITY Comments::v17 TO v6\nADAPT ENTITY Comments::v18 TO v7\nADAPT ENTITY Comments::v19 TO v6\nADAPT ENTITY Comments::v20 TO v6\nFigure 6.23: Orion model used to update variations on the Reddit Comments entity type.\n// DELVAR ENTITY Comments::4\nreddit.Comments.remove({\n\"author_flair_css_class\": {$exists: true},\n\"edited\": {$exists: true},\n\"stickied\": {$exists: true},\n\"archived\": {$exists: false},\n\"downs\": {$exists: false},\n\"name\": {$exists: false},\n\"score_hidden\": {$exists: false},\n\"author_flair_text\": {$exists: false},\n\"distinguished\": {$exists: false}\n})\n// ADAPT ENTITY Comments::11 TO 5\nreddit.Comments.updateMany({\n\"archived\": {$exists: true},\n\"distinguished\": {$exists: true},\n\"downs\": {$exists: true},\n\"edited\": {$exists: true},\n\"name\": {$exists: true},\n\"score_hidden\": {$exists: true},\n\"author_flair_css_class\": {$exists: false},\n\"author_flair_text\": {$exists: false}}, [\n{$unset: [\"distinguished\"]}\n])\n\n\n",
+              "type": "string"
+            },
+            {
+              "id": "d8aed2b4-1841-47ef-9f38-93c656248283",
+              "name": "design",
+              "value": "Orion is a DSL for defining schema evolution operations over NoSQL databases.\n\nIt operates at a higher level of abstraction than database-specific languages and allows defining schema change operations (SCOs) and migration operations.\n\nIts purpose is to automate schema evolution and data migration in systems where schemas may be explicit (relational) or implicit (NoSQL).\n\nAn Orion script consists of one or more operations that transform a source schema into a target schema.\n\nOrion is a DSL for defining schema evolution operations over NoSQL databases.\n\nIt operates at a higher level of abstraction than database-specific languages and allows defining schema change operations (SCOs) and migration operations.\n\nIts purpose is to automate schema evolution and data migration in systems where schemas may be explicit (relational) or implicit (NoSQL).\n\nAn Orion script consists of one or more operations that transform a source schema into a target schema.\n\nOrion is based on a data model that includes:\n\n- Entities\n- Attributes\n- References\n- Aggregations\n\nSchemas are modeled as directed graphs where:\n- Nodes represent entities\n- Edges represent references or aggregations\n\nOperations can affect:\n- Structure (entities, references, aggregations)\n- Properties (attributes)\n\nEntity operations include:\n\n- Add entity\n- Remove entity\n- Rename entity\n- Split entity\n- Merge entity\n\nAttribute operations include:\n\n- Add attribute\n- Remove attribute\n- Rename attribute\n- Change attribute type\n- Nest attributes\n\nReference operations include:\n\n- Add reference\n- Modify cardinality\n- Morph reference (e.g., convert to aggregation)\nAggregation operations include:\n\n- Add aggregation\n- Modify cardinality\n- Morph aggregation\n- Unnest aggregation\n\nSome operations are migration operations rather than pure schema changes:\n\n- Move attribute (remove from source, add to target)\n- Copy attribute (duplicate from source to target)\n\nThese operations involve data transformation and are not atomic.\n\nEach operation has:\n\n- Schema-level semantics (how the schema changes)\n- Database-level semantics (how data is migrated)\n\nOperations may include:\n- Preconditions\n- Postconditions\n- Data transformation logic\n\nScripts are executed as sequences of operations.\n\nSchema change operations can be classified as:\n\n- Additive (adds information)\n- Subtractive (removes information)\n- Both (e.g., rename)\n\n- Soft (no entity migration required)\n- Hard (requires moving instances)\n\n- Forward compatible\n- Backward compatible\n\nAfter applying operations, the following invariants should hold:\n\n- Unique names for entities and attributes\n- Schema consistency (graph structure)\n\nSINTAXIS:\n\nENTITY ADD name\nENTITY DEL name\nENTITY RENAME oldName TO newName\nENTITY SPLIT entity INTO E1(...), E2(...)\nENTITY MERGE E1, E2 INTO E3 WITH condition\n\nATTR ADD entity :: name : type\nATTR DEL entity :: name\nATTR RENAME entity :: name TO newName\n\nREF ADD ...\nAGGR ADD ...\n\nATTR MOVE A :: attr1 TO B :: attr2 WITH condition\nATTR COPY A :: attr1 TO B :: attr2 WITH condition\n\nATTR CAST entity :: name : newType\nREF CARD newCardinality\nREF TO AGGR\nAGGR ADD entity STRUCT\nAGGR CHANGE ...\n\nOperation: Move attribute\n\nSchema-level:\n- Attribute is removed from source entity\n- Attribute is added to target entity\n\nDatabase-level:\n- For each instance:\n    value is transferred from source to target\n",
+              "type": "string"
+            },
+            {
+              "id": "ea82fb20-c90a-4201-814c-67e404bb9080",
+              "name": "examples",
+              "value": "{\n  \"dsl_examples\": [\n    {\n      \"name\": \"GameTracker\",\n      \"athena_input\": \"Schema GameTracker:1\\n\\nRoot entity Player\\n{\\n  Common\\n  {\\n    +id: Identifier,\\n    nickname: String,\\n    avatar_url: String /^https/,\\n    status: Integer (0 .. 5),\\n    last_activity: Timestamp,\\n    reputation: Double,\\n    suspended: Boolean,\\n    user_data: Aggr<Player_Data>&\\n  }\\n  Variation 1\\n  {\\n    experience: Double,\\n    hours_played: Double,\\n    ach_earned: Aggr<Ach_Summary>+,\\n    score: Integer (0 .. 99999)\\n  }\\n}\\n\\nEntity Player_Data\\n{\\n  country_code: Integer,\\n  name: String,\\n  email: String /^.+@.+\\\\\\\\.com$/,\\n  ?birthday: Timestamp\\n}\",\n      \n      \"orion_script\": \"GameTracker_ops operations\\n\\nUSING GameTracker:1\\n\\nADD ENTITY Guild: { +id: Identifier, code: String, name: String, num_players: Number }\\nRENAME ENTITY Player TO GamePlayer\\nDELETE Achievement::is_active\\nRENAME Ach_Summary::completed_at TO is_completed\\nADD ATTR Player_Data::surname: String\",\n\n      \"athena_outputs\": [\n        {\n          \"schema\": \"Schema GameTracker:2\\n\\nRoot entity GamePlayer\\n{\\n  Common\\n  {\\n    +id: Identifier,\\n    nickname: String\\n  }\\n}\",\n          \n          \"sql\": \"CREATE TABLE GamePlayer (id VARCHAR(255) PRIMARY KEY);\",\n          \n          \"cql\": \"CREATE TABLE gameplayer (id TEXT PRIMARY KEY);\",\n          \n          \"mongodb\": \"db.createCollection(\\\"GamePlayer\\\");\",\n          \n          \"cypher\": \"CREATE (x:GamePlayer);\"\n        }\n      ]\n    },\n\n    {\n      \"name\": \"RunningSong\",\n      \n      \"athena_input\": \"Schema running_songs:1\\n\\nroot entity Author\\n{\\n  Common { preferredAlbum: ref<Album>+ }\\n}\",\n\n      \"orion_script\": \"running_songs operations\\n\\nUSING running_songs:1\\n\\nRENAME ENTITY Author TO Artist\\nDELETE *::popularity\",\n\n      \"athena_outputs\": [\n        {\n          \"schema\": \"Schema running_songs:2\\n\\nroot entity Artist\\n{\\n  Common { albums: ref<Album>+ }\\n}\"\n        },\n        {\n          \"schema\": \"Schema running_songs:3\\n\\nroot entity Artist\\n{\\n  Common { albums: ref<Album>+ }\\n}\"\n        }\n      ]\n    }\n  ]\n}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1888,
+        -32
+      ],
+      "id": "b5dad356-6c93-4368-85b3-36327c114843",
+      "name": "Load Training Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Recuperar datos\nconst grammar = $json.grammar || \"\";\nconst chapter = $json.chapter || \"\";\nconst design = $json.design || \"\";\nconst examples = $json.examples || \"\";\n\n// 2. Construir prompt final\nconst finalPrompt = `\nI’m going to train you on learning the Orion DSL.\n\nFor this, I will provide the following information in 3 phases:\n- Phase 1: I will show you the formal definition of the DSL.\n- Phase 2: I will show you related articles about its creation, explanation, constraints, and characteristics.\n- Phase 3: I will show you examples of Orion mapped to SQL, MongoDB Validator, Cassandra and Neo4j.\n\nWhile I’m showing you the phases, I don’t want you to say anything — simply memorize what I provide. Afterwards, when you receive the information in each prompt, I want you to respond with “Received.” When I write “End of training”, then I want you to display:\n- Comments or feedback about your learning (explain in detail how your experience was and what you think about the DSL).\n- Questions or suggestions (state questions that are ambiguous or could be clarified for better understanding).\n\n-------------------------------------------------------------------------------------------------------------\n\n[Prompt]\nPhase 1: The formal definition of the DSL is provided below.\n\n${grammar}\n\n-------------------------------------------------------------------------------------------------------------\n\n[Prompt]\nPhase 2: The following documents related to the DSL are provided below.\n\n[Document 1: Chapter Orion]\n${chapter}\n\n[Document 2: Design Orion]\n${design}\n\n-------------------------------------------------------------------------------------------------------------\n\n[Prompt]\nPhase 3: Examples are provided along with their corresponding mappings to relational schemas, Cassandra, MongoDB, and Neo4j.\n\n${examples}\n\n-------------------------------------------------------------------------------------------------------------\n\nEnd of training.\n\n-------------------------------------------------------------------------------------------------------------\n\n(from this point on, any questions the LLM might have regarding the training should be resolved)\n`.trim();\n\n// 3. Devolver resultado\nreturn [\n  {\n    json: {\n      prompt: finalPrompt\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        -112
+      ],
+      "id": "90759d8b-449e-4e49-bad1-aa345c953833",
+      "name": "Build Full Prompt"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function normalize(url) {\n  if (!url) return \"\";\n  return url\n    .replace(\"github.com\", \"raw.githubusercontent.com\")\n    .replace(\"/blob/\", \"/\");\n}\n\nreturn {\n    ...$json,\n    url_athena: normalize($json.file_url_athena),\n    url_cypher: normalize($json.file_url_cypher)\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        -112
+      ],
+      "id": "e9c12084-648d-4a6f-ad56-19389df4d151",
+      "name": "Normalize_GitHub_URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_athena }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data1"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1120,
+        16
+      ],
+      "id": "62f35991-9c21-4f7a-bef5-0b07cd3d63d4",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  id: $json.id,\n  direction: $json.direction,\n  file_url_athena: $json.file_url_athena,\n  file_url_cypher: $json.file_url_cypher,\n  source: $json.source,\n  temperature: 0.7,\n  run: 1,\n  model: \"GPT-5.4\",\n  input_athena: $json.data1,\n  input_cypher: $json.data2,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        -32
+      ],
+      "id": "9cbd6a7d-519f-4472-aa31-d454103e39a2",
+      "name": "Extract Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const direction = ($json.direction || \"\").trim();\n\nconst athena = $json.input_athena || \"\";\nconst cypher = $json.input_cypher || \"\";\nconst source = $json.source || \"\";\n\n// -------- CASE 1: ORION → ALL DBs --------\nif (direction === \"ORION_TO_SCHEMA\") {\n\n  return {\n    json: {\n      ...$json,\n      task_prompt: `\nYou are given:\n\n1) An Athena schema\n2) An Orion evolution script\n\nYour task is to generate the corresponding database update scripts.\n\nRequirements:\n- Respect the semantics of Orion operations\n- Generate equivalent scripts for:\n  - SQL\n  - Cassandra (CQL)\n  - MongoDB\n  - Neo4j (Cypher)\n- Ensure correctness and completeness\n\nAthena schema:\n${athena}\n\nOrion script:\n${$json.input_orion || \"\"}\n`\n    }\n  };\n}\n\n// -------- CASE 2: DBs → ORION --------\nif (direction === \"DBS_TO_ORION\") {\n\n  return {\n    json: {\n      ...$json,\n      task_prompt: `\nYou are given:\n\n1) An Athena schema\n2) A ${source} schema evolution script\n\nYour task is to generate ONLY the equivalent Orion evolution script.\n\nIMPORTANT:\n- Do NOT reconstruct the schema\n- Do NOT output the full schema\n- Only output Orion evolution operations\n\nRequirements:\n- Capture all schema changes expressed in the input script\n- Use valid Orion syntax\n- Use Orion operations such as:\n  - RENAME\n  - DELETE\n  - ADD\n  - CAST\n\nFormat:\nReturn ONLY the Orion script, for example:\n\nevolve {\n  rename Entity::attribute TO new_name;\n  delete Entity::attribute;\n}\n\nAthena schema:\n${athena}\n\n${source} evolution script:\n${cypher}\n`\n    }\n  };\n}\n\n// -------- DEFAULT / FALLBACK --------\nreturn {\n  json: {\n    ...$json,\n    task_prompt: `\nInvalid or unsupported direction: ${direction}\n`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        -112
+      ],
+      "id": "73a34409-6bd2-4045-992f-3acce788fce2",
+      "name": "Build Task Prompt"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -928,
+        -96
+      ],
+      "id": "b29aa6d0-66ea-4054-b327-22c4167dac9f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const training = $json.prompt || \"\";       // viene de Build Full Prompt\nconst task = $json.task_prompt || \"\";      // viene de Build Task Prompt\n\nconst finalPrompt = `\n${training}\n\n-------------------------------------------------------------------------------------------------------------\n\nNow apply the knowledge you have learned.\n\nDo NOT repeat the training.\nDo NOT explain your reasoning.\nOnly produce the requested output.\n\n-------------------------------------------------------------------------------------------------------------\n\nTASK:\n\n${task}\n\n-------------------------------------------------------------------------------------------------------------\n\nOUTPUT REQUIREMENTS:\n- Be precise and concise\n- Do not add explanations\n- Do not include comments unless necessary\n- Ensure syntactic correctness\n`;\n\nreturn {\n      ...$json,\n      final_prompt: finalPrompt\n  };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        -16
+      ],
+      "id": "8ae0132c-ca85-47f7-80e4-d3aa42c51789",
+      "name": "Build Final Prompt"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "llm_results",
+          "mode": "list",
+          "cachedResultName": "llm_results"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "temperature": "={{ $json.temperature }}",
+            "run": "={{ $json.run }}",
+            "id": "={{ $json.id }}",
+            "direction": "={{ $json.direction }}",
+            "output": "={{ $json.output }}",
+            "input": "={{ $json.final_prompt }}",
+            "file_url": "={{ $json.file_url }}",
+            "dsl": "Orion",
+            "model": "={{ $('Extract Input').item.json.model }}",
+            "source": "={{ $json.source }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "direction",
+              "displayName": "direction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_url",
+              "displayName": "file_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "temperature",
+              "displayName": "temperature",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "run",
+              "displayName": "run",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "dsl",
+              "displayName": "dsl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "correct",
+              "displayName": "correct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        640,
+        -192
+      ],
+      "id": "329c5832-0687-40ff-9948-6bde92bfc513",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "KcsdhGrPS6CJXI7a",
+          "name": "Postgres account 16"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5.4",
+          "mode": "list",
+          "cachedResultName": "GPT-5.4"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.final_prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 1500,
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        -144
+      ],
+      "id": "28c0498a-5df4-4a5d-a0ef-8ef29c826134",
+      "name": "Generate Script",
+      "credentials": {
+        "openAiApi": {
+          "id": "IikXZ2Vi4fbyrpCV",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.output?.[0]?.content?.[0]?.text || \"\";\n\nreturn [\n  {\n    json: {\n      ...$json,\n      orion_clean: text.trim()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        0
+      ],
+      "id": "6d907289-7471-49cb-9abb-32bb5ea6d06c",
+      "name": "Clean output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28e0e78d-c36a-4d89-af45-731b4c0af3d8",
+              "name": "id",
+              "value": "={{ $('Build Final Prompt').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "63b00584-3a65-41b7-a907-35db6f922f50",
+              "name": "direction",
+              "value": "={{ $('Build Final Prompt').item.json.direction }}",
+              "type": "string"
+            },
+            {
+              "id": "ebaa8e61-9aa2-484a-aace-1d1a956fba11",
+              "name": "temperature",
+              "value": "={{ $('Build Final Prompt').item.json.temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "cf434ab0-55f5-4bab-a34c-a82a2c967fd6",
+              "name": "run",
+              "value": "={{ $('Build Final Prompt').item.json.run }}",
+              "type": "number"
+            },
+            {
+              "id": "76d5b2a8-7063-4e21-bb04-e2f852edb704",
+              "name": "final_prompt",
+              "value": "={{ $json.input }}",
+              "type": "string"
+            },
+            {
+              "id": "80c556bc-d0bd-4f28-98b1-9a63a8f09b43",
+              "name": "output",
+              "value": "={{$json.orion_clean}}",
+              "type": "string"
+            },
+            {
+              "id": "26deb660-87b6-4912-b255-1a36f12dcc99",
+              "name": "file_url",
+              "value": "={{ $json.file_url }}",
+              "type": "string"
+            },
+            {
+              "id": "67c2b52b-f8b1-449f-a8b0-5f2ed1aa280d",
+              "name": "dsl",
+              "value": "={{ $('Test Data').item.json.dsl}}",
+              "type": "string"
+            },
+            {
+              "id": "6c7616d6-bd04-436b-b517-527f822885da",
+              "name": "source",
+              "value": "={{ $('Extract Input').item.json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "c6790abe-ad21-4ef0-a3e0-bab52c318c00",
+              "name": "model",
+              "value": "={{ $('Build Final Prompt').item.json.model }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        16
+      ],
+      "id": "73fa733b-12b7-4506-a7ae-46aaf4e58980",
+      "name": "Prepare Data Stored"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n    \"id\": \"Umugram\",\n    \"direction\": \"DBS_TO_ORION\",\n     \"source\": \"cypher\",\n  \"dsl\":\"Orion\",\n    \"file_url_athena\": \"https://github.com/modelum/DSLandLLM/blob/main/DSL_LLM_Training/OrionTraining/Testing/Schema2Orion/Umugram.athena\",\n   \"file_url_cypher\": \"https://github.com/modelum/DSLandLLM/blob/main/DSL_LLM_Training/OrionTraining/Testing/Schema2Orion/Neo4j2Orion.cypher\"\n  }\n  \n",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1520,
+        -112
+      ],
+      "id": "770d01ca-8375-4d52-bf8d-c4a7f1a4e450",
+      "name": "Test Data"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_cypher}}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data2"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1120,
+        160
+      ],
+      "id": "30dd940f-c37e-41bb-9d63-f3b66fceb3ec",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $('Extract Input').item.json;\n\n// -------- 1. Seleccionar script correcto según source --------\nconst source = (meta.source || \"\").toLowerCase();\n\nlet dbScript = \"\";\n\nif (source === \"sql\") dbScript = meta.input_sql || \"\";\nif (source === \"cql\") dbScript = meta.input_cql || \"\";\nif (source === \"mongodb\") dbScript = meta.input_mongodb || \"\";\nif (source === \"cypher\") dbScript = meta.input_cypher || \"\";\n\n// -------- 2. Construir input combinado --------\nlet inputCombined = \"\";\n\nif (meta.direction === \"ORION_TO_SCHEMA\") {\n  inputCombined = `\n--- ATHENA SCHEMA ---\n${meta.input_athena || \"\"}\n\n--- ORION SCRIPT ---\n${meta.input_orion || \"\"}\n`.trim();\n} else {\n  inputCombined = `\n--- ATHENA SCHEMA ---\n${meta.input_athena || \"\"}\n\n--- DATABASE SCRIPT (${source.toUpperCase()}) ---\n${dbScript}\n`.trim();\n}\n\n// -------- 3. file_url combinado --------\nlet fileUrlCombined = \"\";\n\nif (meta.direction === \"ORION_TO_SCHEMA\") {\n  fileUrlCombined = JSON.stringify({\n    athena: meta.file_url_athena || \"\",\n    orion: meta.file_url_orion || \"\"\n  });\n} else {\n  fileUrlCombined = JSON.stringify({\n    athena: meta.file_url_athena || \"\",\n    source: source\n  });\n}\n\n// -------- 4. Return --------\nreturn [\n  {\n    json: {\n      ...$json,\n      input: inputCombined,\n      file_url: fileUrlCombined\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -128
+      ],
+      "id": "fc233f75-ad37-4eb5-9e60-6331928abc6b",
+      "name": "Combine Input"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Load Training Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Training Data": {
+      "main": [
+        [
+          {
+            "node": "Build Full Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Full Prompt": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_GitHub_URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [
+          {
+            "node": "Build Task Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Task Prompt": {
+      "main": [
+        [
+          {
+            "node": "Build Final Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Final Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        []
+      ]
+    },
+    "Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Clean output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean output": {
+      "main": [
+        [
+          {
+            "node": "Combine Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data Stored": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize_GitHub_URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Combine Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data Stored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e4a37a5f-c600-4866-bb01-26eb697c4d9d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9598d86f4fec5d86581d704e57de784610b047bdff7f1a4692fc2822a9678fa1"
+  },
+  "id": "NmSbVUvJT3JUYkY5",
+  "tags": []
+}

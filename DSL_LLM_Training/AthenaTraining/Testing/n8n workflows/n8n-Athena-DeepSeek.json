@@ -1,0 +1,661 @@
+{
+  "name": "DSL&LLM-Athena-deepseek",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2176,
+        80
+      ],
+      "id": "254c070e-80ac-4e6e-b14f-1ddf9101dc83",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7efd58c-6b76-4d18-97c4-bd324c2571ee",
+              "name": "instruction_block",
+              "value": "I’m going to train you on learning the Athena DSL.  You will receive information in 3 phases: - Phase 1: Formal definition of the DSL - Phase 2: Articles explaining the DSL - Phase 3: Examples of Athena mapped to SQL, MongoDB, and Cassandra  During the training, you must not generate any output. Simply internalize the information.  After the training, you will be given a task. You must solve it based only on the knowledge acquired during training.",
+              "type": "string"
+            },
+            {
+              "id": "031cb3fa-f2e2-4788-a18f-1f4a279fa6b3",
+              "name": "phase1_grammar",
+              "value": "grammar es.um.uschema.xtext.athena.Athena with org.eclipse.xtext.common.Terminals\n\ngenerate athena \"http://www.um.es/uschema/xtext/athena/Athena\"\nimport \"http://www.eclipse.org/emf/2002/Ecore\" as ecore\n\nAthenaSchema returns AthenaSchema:\n  'Schema' id=SchemaId\n  ( 'import' imports+=Import )*\n  ( featureSets+=FeatureSetDecl | entities+=EntityDecl | relationships+=RelationshipDecl )*\n;\n\nSchemaId:\n  name=ValidId ':' version=VersionId\n;\n\nImport:\n  importedNamespace=[AthenaSchema|QualifiedImport]\n;\n\nTopLevelStructureDefiningElementDecl:\n  SchemaTypeDecl | FeatureSetDecl\n;\n\nFeatureSetDecl:\n  'fset' name=ValidId\n  structure=StructureExpr\n;\n\nSchemaTypeDecl:\n  EntityDecl | RelationshipDecl\n;\n\nEntityDecl:\n  ShortEntityDecl | RegularEntityDecl\n;\n\n// We removed { } to make it consistent with common=CommonSpec?\nShortEntityDecl:\n  ( root?='root' )? 'entity' name=ValidId ( '::' parents+=[SchemaTypeDecl|QualifiedEntityName] ( ',' parents+=[SchemaTypeDecl|QualifiedEntityName] )* )?\n    structure=StructureExpr\n;\n\nRegularEntityDecl:\n  ( root?='root' )? 'entity' name=ValidId ( '::' parents+=[SchemaTypeDecl|QualifiedEntityName] ( ',' parents+=[SchemaTypeDecl|QualifiedEntityName] )* )?\n  '{'\n    common=CommonSpec?\n    variations+=VariationDecl+\n  '}'\n;\n\nRelationshipDecl:\n  ShortRelationshipDecl | RegularRelationshipDecl\n;\n\nShortRelationshipDecl:\n  'relationship' name=ValidId ( '::' parents+=[SchemaTypeDecl|QualifiedRelationshipName] ( ',' parents+=[SchemaTypeDecl|QualifiedRelationshipName] )* )?\n    structure=StructureExpr\n;\n\nRegularRelationshipDecl:\n  'relationship' name=ValidId ( '::' parents+=[SchemaTypeDecl|QualifiedRelationshipName] ( ',' parents+=[SchemaTypeDecl|QualifiedRelationshipName] )* )?\n  '{'\n    common=CommonSpec?\n    variations+=VariationDecl+\n  '}'\n;\n\nCommonSpec:\n  'common' structure=StructureExpr\n;\n\nVariationDecl:\n  'variation' name=VariationIdSpec\n  structure=StructureExpr?\n;\n\nStructureExpr returns StructureExpr:\n  StructureTerm ( {StructureExpr.left=current} operator=( 'U' | '+' | '-' ) right=StructureTerm )*\n;\n\nStructureTerm returns StructureExpr:\n  StructurePrimary ( {StructureTerm.left=current} operator='I' right=StructurePrimary )*\n;\n\nStructurePrimary returns StructureExpr:\n  StructureLiteral | TopLevelStructureDefiningElementDeclRef  | VariationDeclRef | SQLStructure | '(' StructureExpr ')'\n;\n\nStructureLiteral:\n  '{' spec=FeatureSet '}'\n;\n\nTopLevelStructureDefiningElementDeclRef:\n  ref=[TopLevelStructureDefiningElementDecl|QualifiedTopLevelStructureDefiningElementName]\n;\n\nVariationDeclRef:\n  ref=[VariationDecl|QualifiedVariationName]\n;\n\nFeatureSet: \n  features+=Feature ( ',' features+=Feature )*\n;\n\nFeature:\n  ComposedReference | SimpleFeature\n;\n\nComposedReference:\n  '(' names+=ValidId ( ',' names+=ValidId )* ')' ':' target=ComposedReferenceTarget\n;\n\nSimpleFeature:\n  ( key?='+' | ( ( optional?='?' )? ( unique?='!' )? ) ) name=ValidId ( ':' type=Type )?\n;\n\nType:\n  DataType | SimpleReferenceTarget | SimpleAggregateTarget | InnerStructureLiteralArray | InnerStructureLiteral\n;\n\n//////////////////////////////////////////////////////////////////////////////////////////////////\n//////////////////////////////////////////////////////////////////////////////////////////////////\n/////////////////TYPE HIERARCHY///////////////////////////////////////////////////////////////////\n\nInnerStructureLiteralArray:\n  '['\n    structure+=InnerStructureLiteral ( ',' structure+=InnerStructureLiteral )*\n  ']'\n;\n\nInnerStructureLiteral:\n  '{' spec=FeatureSet '}'\n;\n\nSimpleReferenceTarget:\n  'ref' '<' ref=[EntityDecl|QualifiedEntityName]\n    (\n      ('as' type=SinglePrimitiveType)\n      |\n      ('feat' (\n        featuredBy+=[RelationshipDecl|QualifiedRelationshipName] |\n        ( featuredBy+=[VariationDecl|QualifiedVariationName] ( ',' featuredBy+=[VariationDecl|QualifiedVariationName] )* )\n        )\n      )\n    )?\n    '>' ( multiplicity=('?'|'&'|'*'|'+') )?\n;\n\nComposedReferenceTarget:\n  'ref' '<' ref=[EntityDecl|QualifiedEntityName] '>'\n;\n\nSimpleAggregateTarget:\n  'aggr' '<' ( aggr+=[SchemaTypeDecl|QualifiedEntityName] |\n             ( aggr+=[VariationDecl|QualifiedVariationName] ( ',' aggr+=[VariationDecl|QualifiedVariationName] )* )) '>' ( multiplicity=('?'|'&'|'*'|'+') )?\n;\n\nDataType:\n  Null | PrimitiveType | List | Set | Map | Tuple\n;\n\nNull returns Null:\n  {Null}\n  'Null'\n;\n\nPrimitiveType:\n  SinglePrimitiveType | OptionPrimitiveType\n;\n\nOptionPrimitiveType:\n  'Option' '<' options+=SinglePrimitiveType ( ',' options+=SinglePrimitiveType )* '>'\n;\n\nList returns List:\n  {List}\n  'List' ( '<' elementType=DataType '>' )?\n;\n\nSet returns Set:\n  {Set}\n  'Set' ( '<' elementType=DataType '>' )?\n;\n\nMap returns Map:\n  {Map}\n  'Map' ( '<' ( keyType=PrimitiveType )? ',' ( valueType=DataType )? '>' )?\n;\n\nTuple returns Tuple:\n  {Tuple}\n  'Tuple' ( '<' elements+=DataType ( ',' elements+=DataType )* '>' )?\n;\n\n//////////////END TYPE HIERARCHY//////////////////////////////////////////////////////////////////\n//////////////////////////////////////////////////////////////////////////////////////////////////\n/////////QUALIFIED NAMES AND PRIMITIVES///////////////////////////////////////////////////////////\n\nQualifiedImport:\n  ValidId ':' VersionId\n;\n\nQualifiedTopLevelStructureDefiningElementName:\n  ValidId ( ':' VersionId )? ( '.' ValidId )*\n;\n\nQualifiedEntityName:\n  ValidId ( ':' VersionId )? ( '.' ValidId )*\n;\n\nQualifiedRelationshipName:\n  ValidId ( ':' VersionId )? ( '.' ValidId )*\n;\n\nQualifiedVariationName:\n  QualifiedTopLevelStructureDefiningElementName '.' VariationIdSpec\n;\n\nVariationIdSpec:\n  INT\n;\n\nSinglePrimitiveType:\n  UnrestrictedPrimitiveType | RestrictedPrimitiveType\n;\n\nRestrictedPrimitiveType:\n  RangedNumber | EnumRestrictedNumber | RegexpRestrictedString | EnumRestrictedString\n;\n\nRangedNumber:\n  typename=NUMBER_LITERAL '(' from=EInt '..' to=EInt ')'\n;\n\nRegexpRestrictedString:\n  typename=STRING_LITERAL regexp=REGEX\n;\n\nEnumRestrictedNumber:\n  typename=NUMBER_LITERAL 'in' '(' enumVals+=EInt (',' enumVals+=EInt )* ')'\n;\n\nEnumRestrictedString:\n  typename=STRING_LITERAL 'in' '(' enumVals+=STRING (',' enumVals+=STRING )* ')'\n;\n\nUnrestrictedPrimitiveType:\n  typename=( STRING_LITERAL | NUMBER_LITERAL | 'Boolean' | 'Bool' | 'Identifier' | 'Timestamp' )\n;\n\nNUMBER_LITERAL:\n  'Integer' | 'Int' | 'Number' | 'Float' | 'Double'\n;\n\nSTRING_LITERAL:\n  'String'\n;\n\nEInt returns ecore::EInt:\n  '-'? INT\n;\n\nVersionId returns ecore::EInt:\n  INT\n;\n\nValidId:\n  ID | KEYWORD\n;\n\nKEYWORD: 'schema' | 'import' | 'struct' | 'root' | 'entity' | 'relationship' | 'common' | 'variation' | 'U' | 'I' | 'ref' | 'feat' | 'as' | 'aggr' |\n         'Null' | 'Option' | 'List' | 'Set' | 'Map' | 'Tuple' | 'in' | 'Boolean' | 'Bool' | 'Identifier' | 'Timestamp' | 'Integer' | 'Int' | 'Number' |\n         'Float' | 'Double' | 'String' | 'sql' | 'create' | 'temporary' | 'table' | 'if' | 'not' | 'exists' | 'constraint' | 'foreign' | 'key' |\n         'references' | 'unique' | 'primary' | 'TINYINT' | 'SMALLINT' | 'DEC' | 'FIXED' | 'DECIMAL' | 'NUMERIC' | 'BIT' | 'REAL' | 'PRECISION' |\n         'DATE' | 'TIME' | 'DATETIME' | 'YEAR' | 'CHAR' | 'VARCHAR' | 'BINARY' | 'VARBINARY' | 'BLOB' | 'TEXT'\n;\n\nterminal REGEX:\n  '/' ( '\\\\' . /* 'b'|'t'|'n'|'f'|'r'|'u'|'\"'|\"'\"|'\\\\'|'\\/' */ | !('\\\\'|'/') )* '/'\n;\n\n////////END QUALIFIED NAMES AND PRIMITIVES////////////////////////////////////////////////////////\n//////////////////////////////////////////////////////////////////////////////////////////////////\n///////////////////SQL DDL////////////////////////////////////////////////////////////////////////\n\nSQLStructure:\n  'SQL' 'CREATE' ( 'TEMPORARY' )? 'TABLE' ( 'IF' 'NOT' 'EXISTS' )? ( name=ValidId )? '(' definitions+=SQLDefinition ( ',' definitions+=SQLDefinition )* ')' ';'\n;\n\nSQLDefinition:\n  SQLColumnDefinition | SQLConstraintDefinition\n;\n\nSQLColumnDefinition:\n  name=ValidId type=SQLType ( '(' EInt ( ',' EInt )? ')' )? ( constraint=SQL_CONSTRAINT_DEFINITION_LITERAL )? ( refs=SQLReferenceTarget )?\n;\n\nSQLConstraintDefinition:\n  SQLPrimaryConstraintDefinition | SQLForeignConstraintDefinition | SQLUniqueConstraintDefinition\n;\n\n// Writing references here instead of colNames+=ValidId makes up for A LOT of troubles. Consider yourself warned.\nSQLPrimaryConstraintDefinition:\n  ( 'CONSTRAINT' ( name=ValidId )? )? 'PRIMARY' 'KEY' '(' colNames+=ValidId ( ',' colNames+=ValidId )* ')'\n;\n\nSQLForeignConstraintDefinition:\n  ( 'CONSTRAINT' ( name=ValidId )? )? 'FOREIGN' 'KEY' ValidId? '(' colNames+=ValidId ( ',' colNames+=ValidId )* ')' refs=SQLReferenceTarget\n;\n\nSQLUniqueConstraintDefinition:\n  ( 'CONSTRAINT' ( name=ValidId )? )? 'UNIQUE' 'KEY' ValidId? '(' colNames+=ValidId ( ',' colNames+=ValidId )* ')'\n;\n\nSQLReferenceTarget:\n  'REFERENCES' ref=[EntityDecl|QualifiedEntityName] '(' colNames+=ValidId ( ',' colNames+=ValidId )* ')'\n;\n\nSQLType:\n  typename=( SQL_BOOLEAN_LITERAL | SQL_NUMBER_LITERAL | SQL_DOUBLE_LITERAL | SQL_TIMESTAMP_LITERAL | SQL_STRING_LITERAL )\n;\n\nSQL_BOOLEAN_LITERAL:\n  'TINYINT' | 'BOOLEAN' | 'BOOL'\n;\n\nSQL_NUMBER_LITERAL:\n  'INT' | 'INTEGER' | 'SMALLINT' | 'MEDIUMINT' | 'DEC' | 'FIXED' | 'DECIMAL' | 'NUMERIC' | 'BIT'\n;\n\nSQL_DOUBLE_LITERAL:\n  'FLOAT' | 'REAL' | 'DOUBLE' 'PRECISION' | 'DOUBLE'\n;\n\nSQL_TIMESTAMP_LITERAL:\n  'DATE' | 'TIME' | 'DATETIME' | 'TIMESTAMP' | 'YEAR'\n;\n\nSQL_STRING_LITERAL:\n  'CHAR' | 'VARCHAR' | 'BINARY' | 'VARBINARY' | 'BLOB' | 'TEXT'\n;\n\nSQL_CONSTRAINT_DEFINITION_LITERAL:\n  ( SQL_PRIMARY_KEY_LITERAL | SQL_UNIQUE_LITERAL | SQL_NULL_LITERAL )\n;\n\nSQL_PRIMARY_KEY_LITERAL:\n  'PRIMARY' 'KEY'\n;\n\nSQL_UNIQUE_LITERAL:\n  'UNIQUE' 'KEY'\n;\n\nSQL_NULL_LITERAL:\n  'NOT'? 'NULL'\n;\n\n/////////////////END SQL DDL//////////////////////////////////////////////////////////////////////\n",
+              "type": "string"
+            },
+            {
+              "id": "8be19346-a0c3-45fc-a34d-06be48be90a0",
+              "name": "phase2_chapter",
+              "value": "\nAthena: A Schema Definition Language\nIn a multi-model environment, unified or generic metamodels such as ER [Che76] are commonly\nused. These generic metamodels are defined with the purpose of representing schemas\nof different data models in the same format. As shown in Chapter 4, the U-Schema metamodel\nwas mainly conceived to represent inferred schemas from NoSQL stores and relational\nsystems. However, even when the majority of NoSQL databases are schemaless, the possibility\nof working with schemas is a convenient commodity, as noted in [Des20].\nAthena is a domain specific language (DSL) built upon the U-Schema metamodel to provide\na generic schema definition language with high expressive power able to specify databaseindependent\nschemas. Athena models provide a textual representation for a better expressiveness\nof schemas, and can be applied in applications and utilities that require developers\nto define schemas from scratch independent to any database or data model. This language\nalso proves its usefulness in scenarios in which schema inference cannot be applied, as in data\ngeneration for testing purposes, or schema manipulation when there is no database whose\nschema can be inferred.\nSince Athena is based on the U-Schema metamodel, it includes a rich set of abstractions\n(e.g., structural variations, references, and relationship types). Moreover, Athena offers mechanisms\nfor reusing and composing schemas, as well as syntactic sugar to ease writing them:\ndefining types with incomplete information and restrictions, working with a large number of\n89\nvariations, or declaring features without types, among others.\nThe Athena language will be the base layer on which the rest of the tools developed in this\nthesis will be based, as will be shown in the following chapters. The aim of this chapter is to\nprovide an in-depth analysis of the Athena language, from the gathering of requirements and\nits implementation to transformations involving Athena schemas and artifact generation.\nThis chapter has been organized as follows: First, we compose a list of requirements to be\nfulfilled by the language. Next, we introduce the Athena language detailing its concrete syntax\nand how requirements are satisfied. In the final section we analyze available transformations\nand artifact generation from Athena schemas.\n5.1 Language Requirements\nWhile obtaining U-Schema models from existing databases is automatically performed by an\ninference tool, as discussed in Chapter 4, when designing schemas, or changing existing ones,\nusing a language to easily manipulate such schemas provides several advantages. Athena has\nbeen designed as a DSL to tackle this need by taking into account the following requirements:\nRequirement 1 The language should be complete, and adhere to the principle of least astonishment.\nThe language will be complete if each element of the U-Schema data model can be mapped\nin Athena. This assures that any U-Schema model can be described by Athena. On the other\nhand, the principle of least astonishment [Blo06] proposes that the result of performing some\noperation should be obvious, consistent, and predictable, based upon the name of the operation\nand other clues. The interpretation of this principle in the context of language design is\nthat every construction of the language must behave as obvious and predictable as possible.\nRequirement 2 The language should favor reusability, including mechanisms for importing,\ninheritance, and versioning.\nWhen declaring schemas, creators should be able to reuse elements of previously defined\nschemas. With this purpose any element susceptible of being reused (e.g., schema types or\nschema variations) should be assigned an identifier that can be uniquely referenced.\nRequirement 3 The language should treat Structure as a first class element.\n90\nThis means that in order to favor extensibility and composability, structures should be able\nto be created anonymously, and manipulated using specific operators, i.e., generating a new\nstructure by compositing other structures, building schema types using structures, and so on.\nRequirement 4 The language should be able to cope with incomplete information.\nThe language should support typeless features, aggregations of unknown variations, or Option\ntypes. This feature allows schemas to be created without the comprehension of all of its\ndetails and to apply processes tolerant to this lack of knowledge.\nRequirement 5 The language should allow to specify restrictions on types.\nWe want to provide the language of mechanisms to define restrictions on types to gain\nexpressivity. Restrictions can be applied to primitive types, and some examples can be regular\nexpressions and enumerate values for Strings, ranges for Numbers, etc. The language must\nalso provide extension mechanisms to define additional restrictions.\nRequirement 6 The language should allow the specification of Union schemas.\nIn addition to specifying schema types as sets of variations (as specified in the U-Schema\ndata model) union schema types should be able to be defined as a list of features flagged as required\nor optional. This mechanism will prove its usefulness to support systems where structural\nvariations come from the usage of optional features.\nRequirement 7 The language should allow the usage of other established schema specification\nlanguages when defining schemas.\nIn order to be easy to adopt by developers, the language should allow the possibility to embed\nfragments of other schema specification languages, such as SQL or JSON Schema [D+22].\nThis will also enhance the integration of Athena with existing languages. The language should\nbe open to be integrated with other languages in the future.\nTo sum up, our main goal when designing the language is to allow it to provide as much\nsyntax mechanisms as possible to favor flexibility, ease its learning curve and be friendly with\ndevelopers used to work with other data models.\n91\n5.2 Implementation of the Athena Language\nAthena has been implemented using the Xtext workbench [Bet16]. We have applied metamodeling\nto define the language: First, an abstract syntax has been defined for the language\nin form of an Ecore metamodel [SBPM09]. Then, the concrete syntax has been defined as a\nXtext grammar. With that, the Xtext engine automatically generated the editor, parser, and\nmodel injector. The stack of technologies used and the artifacts generated automatically can\nbe seen in Figure 5.1. A translational approach was applied to define the semantics: Athena\nmodels are transformed to U-Schema models, and then utilities can be built for Athena.\nFigure 5.1: Stack of technologies used in Athena and the generated artifacts.\n5.2.1 Grammar\nSince the Athena metamodel is too large to be shown, we consider an excerpt of the grammar\nnotation to understand the language. Once some notions about the notation are provided,\nwe will show a running example that will be useful to illustrate all the syntactic mechanisms\nAthena provides in detail. Later, mappings between U-Schema and Athena will be shown.\nFigure 5.2 shows an excerpt of the Athena grammar in EBNF format. An Athena schema\n(<AthenaSchema>) is organized in three parts: A header specifying the schema name, an\noptional set of import statements, and a set of type definitions. In the next section we\nwill detail each part along with the running example. The majority of elements defined\nwith Athena can have additional arguments compared to their equivalents in U-Schema or\n92\ncan be defined in several ways in order to achieve a more writable syntax. For example, an\nentity type (EntityDecl) can be defined by using either the <ShortEntityDecl> rule or\nthe <RegularEntityDecl> rule. Each one of these rules end up producing one or more\n<StructurePrimary>, StructureExpr or StructureLiteral rules, which hold the content\nof the schema type being defined. Elements of the grammar are usually defined by a\nkeyword (e.g., entity in case of entity types, variation for variations, List for the list types\nand so on) and some optional parameters. Also a subset of the SQL language has been included\nin the <SQLStructure> rule to allow the usage of SQL statements inside a structure.\nThe complete Athena grammar can be found in Appendix 10.4.1.\nIn order to better reflect the usage of the Athena language, we will introduce the SoftwareDev\nschema developed with Athena, shown in Figure 5.3. In this example, two feature\nsets are defined: Popularity_features and Timestamp_features, by using the\n<FeatureSetDecl> rule, and four entity types: Developer, DeveloperInfo, Repository\nand Ticket, by using the <EntityDecl> rule.\n5.2.2 Syntactic Mechanisms\nAthena has been enriched with several syntactic mechanisms to provide flexibility for developers\nto build schemas in intuitive ways. Here, we will overview these mechanisms and map\nthem with the requirements they are related to.\nSchema Identifiers Several mechanisms of the language, such as schema importing and\nversioning, require assigning identifiers to schemas. A schema identifier is composed of a\nname and a version number separated by a colon. The version number allows the evolution of\na schema to be tracked over time. It is initialized to 1, and it will be incremented as new schema\nversions are generated. In the running example, the schema is named SoftwareDev and it is in\nits first version. Once new schema versions are generated, they will be named SoftwareDev:2,\nSoftwareDev:3 and so on. This mechanism will help satisfy Requirement 2.\nImporting Schemas By using the previous mechanism, schemas can be uniquely identified.\nSchemas can then be imported using their identifier. When declaring a schema,\nall the types of the imported schemas can be directly used. Figure 5.4 shows a schema\nthat imports SoftwareDev:1 and therefore elements of this new schema can reference and\ninherit any elements defined in SoftwareDev:1 by using their identifiers. This feature\n93\n⟨AthenaSchema⟩ ::= ‘Schema’ ⟨SchemaId⟩ ( ‘import’ ⟨Import⟩ )* ( ⟨FeatureSetDecl⟩ | ⟨EntityDecl⟩ |\n⟨RelationshipDecl⟩ )*\n⟨EntityDecl⟩ ::= ⟨ShortEntityDecl⟩\n| ⟨RegularEntityDecl⟩\n⟨ShortEntityDecl⟩ ::= ‘root’? ‘entity’ ID ( ‘::’ ID ( ‘,’ ID )* )? ⟨StructureExpr⟩\n⟨RegularEntityDecl⟩ ::= ‘root’? ‘entity’ ID ( ‘::’ ID ( ‘,’ ID )* )? ‘{’ ⟨CommonSpec⟩? ⟨VariationDecl⟩+ ‘}’\n⟨CommonSpec⟩ ::= ‘common’ ⟨StructureExpr⟩\n⟨VariationDecl⟩ ::= ‘variation’ INT ⟨StructureExpr⟩?\n⟨StructurePrimary⟩ ::= ⟨StructureLiteral⟩\n| ⟨TopLevelStructureDefiningElementDeclRef ⟩\n| ⟨VariationDeclRef ⟩\n| ⟨SQLStructure⟩\n| ‘(’ ⟨StructureExpr⟩ ‘)’\n⟨SQLStructure⟩ ::= ‘SQL’ ‘CREATE’ ‘TEMPORARY’? ‘TABLE’ ( ‘IF’ ‘NOT’ ‘EXISTS’ )? ID? ‘(’ ⟨SQLDefinition⟩ (\n‘,’ ⟨SQLDefinition⟩ )* ‘)’ ‘;’\n⟨FeatureSet⟩ ::= ⟨Feature⟩ ( ‘,’ ⟨Feature⟩ )*\n⟨Feature⟩ ::= ⟨ComposedReference⟩\n| ⟨SimpleFeature⟩\n⟨SimpleFeature⟩ ::= ( ‘+’ | ‘?’? ‘!’? ) ID ( ‘:’ ⟨Type⟩ )?\n⟨Type⟩ ::= ⟨DataType⟩\n| ⟨SimpleReferenceTarget⟩\n| ⟨SimpleAggregateTarget⟩\n| ⟨InnerStructureLiteralArray⟩\n| ⟨InnerStructureLiteral⟩\n⟨DataType⟩ ::= ‘Null’\n| ⟨PrimitiveType⟩\n| ⟨List⟩\n| ⟨Set⟩\n| ⟨Map⟩\n| ⟨Tuple⟩\nFigure 5.2: Excerpt of the Athena language in EBNF format.\nhelps contributing to Requirement 2. In this example, Project.repositories and\nProjectDeveloper.solved_tickets are references to Repository and Ticket, respectively,\ndefined in SoftwareDev:1.\n94\nSchema SoftwareDev:1\nFSet Popularity_features {\nnum_forks: Integer ( 0..1000 ),\nnum_stars: Integer ( 0..1000 )\n}\nFSet Timestamp_features {\ncreated_time: Timestamp,\nlast_activity_date: Timestamp\n}\nRoot entity Developer {\nCommon\n{\n+ id: Identifier,\ndev_info: Aggr<DeveloperInfo>&,\n! email: String /^.+@.+\\\\.com$/,\npermissions: String in\n(\"R\",\"W\",\"X\",\"RW\",\"RX\",\"WX\",\"RWX\")\n}\nVariation 1\n{ is_active: Boolean }\nVariation 2\n{ suspended_acc: Option<String, Boolean> }\n}\nEntity DeveloperInfo {\n? about_me: String\nname: String /^[A-Z][a-z]*$/,\nteam: String\n}\nRoot entity Repository\n{\n+ id: Identifier,\ndevelopers: Ref<Developer>+,\nrequests:\n[\n{\nbranch: String,\nstatus: String in (\"Open\", \"Closed\"),\nnumLabels: Number\n}\n],\n? tags: List<String>,\ntitle: String,\nurl: String\n} U Popularity_features\nU Timestamp_features\nRoot entity Ticket\nSQL CREATE TABLE Ticket (\nid VARCHAR(255) NOT NULL,\nmessage VARCHAR(255) NOT NULL,\nrepository_id VARCHAR(255) NOT NULL,\ndeveloper_id VARCHAR(255) NOT NULL,\nFOREIGN KEY ( repository_id )\nREFERENCES Repository ( id ),\nFOREIGN KEY ( developer_id )\nREFERENCES Developer ( id ),\nPRIMARY KEY ( id )\n);\n+ Popularity_features\n+ Timestamp_features\nFigure 5.3: The SoftwareDev schema defined using Athena.\nSchema SoftwareProject:1\nImport SoftwareDev:1\nRoot entity Project {\n+ id: Identifier,\ndevelopers: Ref<ProjectDeveloper>+,\ndue_date: Timestamp,\nname: String,\nrepositories: Ref<SoftwareDev:1.Repository>+\n}\nRoot entity ProjectManager::SoftwareDev:1.Developer\n{\nin_active: Boolean,\nmanaged_projects: Integer\n}\nRoot entity ProjectDeveloper::SoftwareDev:1.Developer\n{\nlanguages: List<String>,\nsolved_tickets: Ref<Ticket>+\n}\nFigure 5.4: The SoftwareProject schema designed as an extension of SoftwareDev.\nSchema Types A schema is formed by a set of Entity types and Relationship types.\nBoth schema types are composed by a set of features. In addition, the Feature Set construct\nis provided to group features with the purpose of being reused in the definition of other types.\nIn the running example of Figure 5.3, four entity types are defined: Developer, Repository,\n95\nTicket, and DeveloperInfo. The former three specify root entities, while the latter specifies\nan aggregate type used to declare a Developer feature. Also, the schema includes two feature\nsets (FSet) named Popularity_features and Timestamp_features.\nWhen a schema type has more than one variation, each one of them must be explicitly declared,\nas shown in the Developer entity type of the running example. Instead of specifying\nvariations, a schema type can also be defined as a union schema type by providing a set of features\nlabeled as required or optional (Requirement 6). In the running example, Repository\nis a union schema type, with five required features and tags as an optional feature.\nStructures To satisfy Requirement 3, Athena allows the definition of structures in order\nto ease type definitions. A structure is defined by means of an expression. A set of structure\noperators has been defined to create structures as a composition of others, such as union (“U”\nor “+”), intersection (“I”), and difference (“-”). Each operand may be a schema type, a variation,\na feature set (that can be previously defined or can be defined inline) or a SQL statement\n(Requirement 7).\nFor example, in Figure 5.3, the structures of Ticket and Repository are formed by adding\ntheir own structure to the structure of Popularity_features and Timestamp_features,\nand Ticket is defined by using a SQL statement as a structure.\nInheritance Mechanism The language also provides a type inheritance mechanism, which\nallows to establish a child-parent relationship between types (Requirement 2). Each feature\ndefined in the parent type will be included in the child type. This mechanism can also be used\nto allow schema types to inherit from schema types defined in other schemas. In Figure 5.4,\ntwo inheritance relationships exist in which ProjectManager and ProjectDeveloper inherit\nfrom the SoftwareDev:1.Developer entity type.\nFeatures A feature is declared by a name and a type, and the type is not mandatory (Requirement\n4). A type can denote an Aggregation, a Reference, a scalar data type, a nested\ntype that will be transformed into an aggregate type, or an array of types. In Figure 5.3, the\nRepository.developer_id feature references Developer, and Developer.dev_info aggregates\nDeveloperInfo. Also Repository.requests is defined as an inline aggregation.\nThe multiplicities are expressed as “+” for one to many, “*” for zero to many, “?” for zero\n96\nto one, and “&” for one to one. When declaring features, some qualifiers can be specified to\ndenote that the feature is a key (“+”), optional (“?”) or restricted to unique values (“!”).\nIn addition to the types described above, the language includes: (i) Primitive types that\ncan be simple scalar types such as String and Integer, or specific types that will be\nsystem-dependent once a schema is translated to a specific database, such as Identifier or\nTimestamp. For example, Repository.id is of type Identifier, which in MongoDB would\nbe translated to an ObjectId, while in Cassandra it would be translated to an uuid. (ii) Collection\ntypes that can be Map, List, Tuple and Set, and (iii) A union type of scalar types (Option\ntypes), e.g., Developer.2.suspended_acc in the running example can be of type String or\nBoolean.\nWhen declaring features of some scalar types, ranges and regular expressions can be used\nto restrict the possible values (Requirement 5). In Figure 5.3, Developer.email and\nDeveloperInfo.name are restricted by a regular expression, in Developer.permissions\nand Repository.requests.status where only certain values are allowed, and integer\nvalues need to be on a certain range in Popularity_features.num_forks and\nPopularity_features.num_stars.\n5.2.3 U-Schema Mappings to Athena Elements\nAs by Requirement 1, Athena must be complete, and this is achieved by assuring that each\nU-Schema element can be mapped to Athena.\nU-Schema schema types (entity and relationship types) are directly mapped to Athena\nequivalents. Structural Variations can also be defined in Athena, as Developer was defined\nin Figure 5.3. Although in U-Schema variations hold sets of features, in Athena features\ncommon to all variations are directly declared in the schema type.\nAttributes and aggregates are also mapped directly to Athena equivalents, but Keys\nand References are defined slightly differently. First, a key is directly created when an attribute,\nor attributes, are promoted by using the “+” modifier, as seen in the Developer.id\nfield of the running example. References in Athena can be defined with a named feature and\nthe keyword Ref, and composed references of more than one attribute can be defined by using\nthe following syntax: (name1, name2): <EntityName>.\nFinally, the U-Schema Type hierarchy has been mapped to Athena elements and then this\nhierarchy has been extended by adding restrictions and the Option type, as described above.\n97\n5.3 Athena Schema Transformations\nOnce the Athena language is defined, we implemented the Athena engine as shown in Figure\n5.5. The Athena engine consists of two sets of elements: model-to-model (m2m) transformations\nand model-to-text (m2t) transformations. Each one of these sets has a number of implemented\ntransformations to other models (m2m) or to generate code for specific databases\n(m2t).\n\nIn this section we will briefly discuss several available transformations involving Athena\nschemas and which artifacts are generated from them.\n5.3.1 Model to Model Transformations\nSince Athena provides several syntactic mechanisms to ease the definition of schemas, we have\ndefined a normalization process that receives an Athena schema and transforms it, resulting in\nan equivalent independent schema more readable and easier to process, visualize and modify.\nThis normalization process is always applied before any other transformation in a transparent\nway to ease that process.\n98\nThe changes performed are listed below: (i) import statements and parent relationships are\nsolved, copying imported and inherited features into schema types as needed. (ii) Structure\noperations are solved: unions, intersections and differences are processed and new structures\nreplace these expressions. (iii) Inner structures and arrays of them are transformed into entity\ntypes and aggregations. Finally, (iv) references are filled with their corresponding types if no\ntype was specified by searching for the type of the key feature of the referenced entity type.\nFigure 5.6 shows the running example after applying the normalization process. Here, the\nschema version has been incremented, the Ticket structure previously provided as a SQL\nstatement has been translated to a union entity type and features defined in feature sets have\nbeen added to the structure. Repository has also been modified to add the features defined\nin Popularity_features and Timestamp_features. Finally, the Repository.requests\nfield has been replaced by an aggregation of a new entity type named Requests.\nSchema SoftwareDev:2\nFSet Popularity_features {\nnum_forks: Integer ( 0 .. 1000 ),\nnum_stars: Integer ( 0 .. 1000 )\n}\nFSet Timestamp_features {\ncreated_time: Timestamp,\nlast_activity_date: Timestamp\n}\nRoot entity Developer {\ncommon {\n+ id: Identifier,\ndev_info: Aggr<DeveloperInfo>&,\n! email: String /^.+@.+\\\\.com$/,\npermissions: String in\n(\"R\",\"W\",\"X\",\"RW\",\"RX\",\"WX\",\"RWX\")\n}\nVariation 1\n{ is_active: Boolean }\nVariation 2\n{ suspended_acc: Option<String, Boolean> }\n}\nEntity DeveloperInfo\n{\n? about_me: String\nname: String /^[A-Z][a-z]*$/,\nteam: String\n}\nRoot entity Ticket {\n+ id: String,\ndeveloper_id: Ref<Developer as Identifier>&,\nmessage: String,\nrepository_id: Ref<Repository as Identifier>&,\ncreated_time: Timestamp,\nlast_activity_date: Timestamp,\nnum_forks: Integer ( 0 .. 1000 ),\nnum_stars: Integer ( 0 .. 1000 )\n}\nRoot entity Repository {\n+id: Identifier,\ntitle: String,\nurl: String,\nrequests: Aggr<Requests.1>+,\ndevelopers: Ref<Developer as Identifier>+,\n?tags: List<String>,\ncreated_time: Timestamp,\nlast_activity_date: Timestamp,\nnum_forks: Integer ( 0 .. 1000 ),\nnum_stars: Integer ( 0 .. 1000 )\n}\nEntity Requests {\nCommon {\nbranch: String,\nstatus: String in ( \"Open\", \"Closed\" ),\nnumLabels: Number\n}\nVariation 1\n}\nFigure 5.6: The SoftwareDev schema after applying the normalization process.\nIn Section 5.2.3 we described a simple mapping from U-Schema to Athena. This process\n99\nis implemented in a trivial m2m transformation. Another transformation has been implemented\nto obtain U-Schema models from Athena schemas. By having available both transformations,\nU-Schema models may be provided with a textual notation and Athena schemas\ncan be used as an input to U-Schema tooling.\nThis transformation however carries a loss of information because some Athena elements\ncannot be mapped to U-Schema. In some cases, as in the Option type, this loss of information\ncan be mitigated by taking the most open type of the ones considered in the Option, but in\nother cases as in restrictions over PrimitiveTypes the loss of information is unavoidable.\nFigure 5.7 shows the running example transformed to U-Schema as a union schema.\nFigure 5.7: The SoftwareDev union schema obtained by applying the U-Schema m2m.\n5.3.2 Model to Text Transformations\nThe transformations described here could have been implemented directly on the U-Schema\nmetamodel and used after transforming an Athena schema to the corresponding U-Schema\nmodel. However, we also intend that the Athena language can be used independently of\nU-Schema, and therefore we provide it with the ability to generate specific database schemas\nas follows.\nWhen considering databases with explicit schemas we are able to generate instructions to\ncreate the corresponding specific schema from an Athena model as scripts. First, we considered\nCassandra because is the most widely used columnar NoSQL store. For this database a\n100\nCQL script is generated with instructions to create a schema. Figure 5.8 shows an excerpt of\nthe running example. Here, Repository is created by using a CREATE TABLE statement since\nRepository is a root entity type, and Requests and Developerinfo are created by using the\nCREATE TYPE statement since they are aggregated (non-root) entity types and therefore they\nare mapped as user-defined types [CRM22].\nCREATE TABLE IF NOT EXISTS Repository (\nid uuid,\ncreated_time timestamp,\ndevelopers list<uuid>,\nlast_activity_date timestamp,\nnum_forks int,\nnum_stars int,\nrequests list<frozen<Requests>>,\ntags list<text>,\ntitle text,\nurl text,\nPRIMARY KEY (id)\n);\nCREATE TYPE IF NOT EXISTS Developerinfo\n(\nabout_me text,\nname text,\nteam text\n);\nCREATE TYPE IF NOT EXISTS Requests\n(\nbranch text,\nnumlabels varint,\nstatus text\n);\nFigure 5.8: CQL code for Repository, Requests, and DeveloperInfo.\nAnother system we considered is MySQL, since Athena schemas can also be translated to\na relational model. For this database SQL scripts are generated. In Figure 5.9 an excerpt of\nthe running example is shown. Here, after normalization some adjustments need to be made,\nsuch as collections being translated to additional tables.\nCREATE TABLE Repository\n(\nid VARCHAR(255) NOT NULL,\ntitle VARCHAR(255) NOT NULL,\nurl VARCHAR(255) NOT NULL,\ncreated_time TIMESTAMP NOT NULL,\nlast_activity_date TIMESTAMP NOT NULL,\nnum_forks INTEGER\nCHECK (num_forks BETWEEN 0 AND 1000)\nNOT NULL,\nnum_stars INTEGER\nCHECK (num_stars BETWEEN 0 AND 1000)\nNOT NULL,\nPRIMARY KEY (id)\n);\nCREATE TABLE DeveloperInfo (\nname VARCHAR(255)\nCHECK (name LIKE '/^[A-Z][a-z]*$/') NOT NULL,\nteam VARCHAR(255) NOT NULL,\nabout_me VARCHAR(255),\nid INTEGER NOT NULL,\nPRIMARY KEY (id) );\nCREATE TABLE Requests (\nrequests VARCHAR(255) NOT NULL,\nbranch VARCHAR(255),\nstatus ENUM ('Open', 'Closed'),\nnumLabels NUMERIC,\nid INTEGER NOT NULL,\nFOREIGN KEY (requests) REFERENCES Repository (id),\nPRIMARY KEY (id));\nFigure 5.9: SQL code for Repository, Requests, and DeveloperInfo.\nFinally, we considered MongoDB as a schemaless database, because MongoDB is the most\npopular document NoSQL store. Given its schemaless nature, no schema can be gener-\n101\nated for it. Instead, a JSON Schema validation* script can be provided. This validation\nallows to provide validation on MongoDB by checking if each object to be stored on the\ndatabase conforms to a provided JSON Schema. In Figure 5.10, a JSON Schema validator\nfor Repository is shown. For each Repository field an entry is created indicating its type, if\nit is required or not, and additional validation rules in case it is an array or object. For example,\nRepository.requests is an array of embedded objects that are also validated.\nSoftwareDev.createCollection(\"Repository\", { validator: {\n$jsonSchema: {\nbsonType: \"object\",\nrequired: [\"_id\",\"title\",\"url\",\"requests\",\"developers\",\n\"created_time\",\"last_activity_date\",\"num_forks\",\"num_stars\"],\nproperties: {\n_id: { bsonType: \"objectId\", description: \"_id must be objectId and IS required.\" },\ntitle: { bsonType: \"string\", description: \"title must be string and IS required.\" },\nurl: { bsonType: \"string\", description: \"url must be string and IS required.\" },\nrequests: {\nbsonType: \"array\", items: {bsonType: \"object\"}, description: \"requests must be array and IS required.\",\nproperties: {\nbranch: { bsonType: \"string\", description: \"branch must be string.\" },\nstatus: { enum: [ \"Open\", \"Closed\" ], description: \"status can only be: [Open,Closed].\" },\nnumLabels: { bsonType: \"number\", description: \"numLabels must be number.\" }\n}\n},\ndevelopers: { bsonType: \"array\", items: { bsonType: \"objectId\" },\ndescription: \"developers must be array and IS required.\" },\ntags: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"tags must be array.\" },\ncreated_time: { bsonType: \"timestamp\", description: \"created_time must be timestamp and IS required.\" },\nlast_activity_date: { bsonType: \"timestamp\",\ndescription: \"last_activity_date must be timestamp and IS required.\"},\nnum_forks:{bsonType:\"int\",minimum: 0,maximum: 1000,description:\"num_forks must be int and IS required.\"},\nnum_stars:{bsonType:\"int\",minimum: 0,maximum: 1000,description:\"num_stars must be int and IS required.\"}\n}}}});\n\n\n",
+              "type": "string"
+            },
+            {
+              "id": "d8aed2b4-1841-47ef-9f38-93c656248283",
+              "name": "phase2_diagram",
+              "value": "--- Athena DSL Structural Model (derived from diagram) ---  The Athena DSL is defined as a metamodel composed of schemas, entity types, relationship types, features, and data types.  1. Core Structure  - An AthenaSchema has:   - name : EString   - entities [0..*]   - relationships [0..*]   - imports [0..*]  2. Schema Types and Variations  - SchemaType:   - name : EString   - parents [0..*]   - isFeaturedBy [0..*]  - StructuralVariation:   - variationId : EInt   - container [1..1] (SchemaType)   - features [0..*]   - commonFeatures [0..*]   - optionalFeatures [0..*]  3. Features  - Feature:   - name : EString  - A SchemaType is described by Features. - Features can be:   - Attributes   - References   - Aggregates  4. Attributes and Keys  - Attribute:   - type [0..1] → DataType  - Key:   - key [0..1]   - attributes [0..*]  - Attributes may belong to a Key. - Keys define identifying attributes.  5. References and Relationships  - Reference:   - lowerBound : EInt   - upperBound : EInt   - refsTo [0..1] → EntityType   - opposite [0..1]  - References define relationships between entity types. - They include multiplicity (lowerBound, upperBound).  - RelationshipType:   - represents relationships in the schema  6. Aggregates  - Aggregate:   - lowerBound : EInt   - upperBound : EInt  - Aggregates represent composition-like structures. - An Aggregable element can contain aggregates [0..*].  7. Entity Types  - EntityType:   - root : EBoolean = false  - Entity types define the main structural elements of a schema.  8. Data Types  - DataType is a general abstraction.  - PrimitiveType:   - name : EString  - Null is also a possible type.  - Complex types include:   - PTuple   - PMap   - PSet   - PList  - Relationships between data types:   - elements [0..*]   - valueType [0..1]   - elementType [0..1]   - keyType [0..1] (for maps)  9. General Relationships  - Features are associated with SchemaTypes. - SchemaTypes may inherit from multiple parents. - Variations define alternative structural configurations. - Attributes, References, and Aggregates define the internal structure of entities. - References connect entities, while Aggregates embed structures. - DataTypes define the types of attribute values.  --- End of Athena DSL Structural Model ---",
+              "type": "string"
+            },
+            {
+              "id": "3cd0a0e9-650f-4599-8bef-eefcf258d160",
+              "name": "phase2_slides",
+              "value": "--- Athena DSL Design (Slides) ---  Athena is designed as an abstract schema definition language to support the specification of database schemas independently of the underlying data model.  :contentReference[oaicite:0]{index=0}  ---  --- Language Objectives ---  The language is designed to:  - Support the NoSQLSchema metamodel for automated schema generation. - Work with incomplete information:   - schemas may have missing entities,   - entities may have missing attributes,   - attributes may lack type or name,   - entities may lack variations.  - Allow definition of operations over schemas. - Allow definition and import of data. - Allow operations over data.  :contentReference[oaicite:1]{index=1}  ---  --- Metamodel Characteristics ---  Key differences with NoSQLSchema:  - SchemaTypes may include:   - common features,   - optional features.  - Variations:   - do not include statistical metadata (e.g., timestamps or counts).  - Features:   - are not inherently optional,   - optionality is context-dependent.  - Attributes:   - may lack type,   - must have a name.  - Aggregations:   - must specify the target variation or entity.  - References:   - must specify the referenced SchemaType.  :contentReference[oaicite:2]{index=2}  ---  --- Schema Definition ---  - One schema per file. - File extension: `.athena`. - Syntax:   - keyword `schema` followed by schema name.  - Schema names are used for referencing across schemas.  :contentReference[oaicite:3]{index=3}  ---  --- Entity and Relationship Definitions ---  Two ways to define schema types:  1. Short definition:    - concise syntax    - implicit structure  2. Full specification (`fullspec`):    - explicit definition    - supports:      - variations      - common properties  - Entities may be:   - root entities   - non-root entities  - Relationship types are also supported.  :contentReference[oaicite:4]{index=4}  ---  --- Variations and Properties ---  - Variations:   - only available in full specifications   - represent alternative structures  - Properties:   - defined in `common` → shared across variations   - in short definitions:     - all properties are common by default     - optional properties marked with `*`  Example: - `feat1, feat2, *feat3` → feat3 is optional  :contentReference[oaicite:5]{index=5}  ---  --- Attributes ---  - Attributes:   - must have a name   - type is optional  - Types include:   - primitive types (String, Number, Boolean)   - collection types:     - PList     - PSet     - PTuple     - PMap  - Complex types:   - may be partially specified  :contentReference[oaicite:6]{index=6}  ---  --- Aggregations ---  - Aggregates:   - must have a name   - cardinality is optional  - Syntax:   - aggregation → target entity or variation  Examples: - `aggr -> (Entity)` - `aggr [0..*] -> (Entity)`  :contentReference[oaicite:7]{index=7}  ---  --- References ---  - References:   - must specify target SchemaType   - define relationships between entities  - Cannot omit target entity  :contentReference[oaicite:8]{index=8}  ---  --- Keys and Constraints ---  - Attributes may act as identifiers (keys) - Constraints supported:   - types   - cardinalities   - structural constraints  :contentReference[oaicite:9]{index=9}  ---  --- General Design Principles ---  - Flexibility in schema definition - Support for incomplete knowledge - High expressiveness - Compatibility with multiple data models - Emphasis on developer usability  --- End of Athena Design Slides ---",
+              "type": "string"
+            },
+            {
+              "id": "ea82fb20-c90a-4201-814c-67e404bb9080",
+              "name": "phase3_examples",
+              "value": "***** example CentroDeportivo en Athena, SQL, CQL y JSON/MongoDB *****\n\nSchema CentroDeportivo:1\n\nRoot entity Instalacion\n{\n  +instalacion_id: Identifier,\n  nombre: String,\n  tipo: String in (\"Interior\", \"Exterior\"),\n  m2: Double (1..9999999)\n}\n\nRoot entity Monitor\n{\n  +dni: Identifier,\n  nombre: String,\n  telefono: Integer,\n  fcontrato: Timestamp,\n  salario: Double (0..999999),\n  especialista: ref<Actividad>+\n}\n\nRoot entity Actividad\n{\n  +actividad_id: Identifier,\n  nombre: String,\n  nivel: Integer (1..5),\n  ?precio: Double (0..9999),\n  responsable: Ref<Monitor>&,\n  instalacion: Ref<Instalacion>&,\n  sesiones: Aggr<Sesion>*\n}\n\n// Other form to define the relationship between Monitor and Actividad\n//relationship Especialista\n//{\n//  monitor: Ref<Monitor>&,\n//  actividad: Ref<Actividad>&\n//}\n\nentity Sesion\n{\n  diasemana: String in (\"L\", \"M\", \"X\", \"J\", \"V\", \"S\"),\n  hora: Double,\n  monitor: Ref<Monitor>&\n}\n*** SQL***\n\nCREATE TABLE instalacion (\n  instalacion_id CHAR(3)     NOT NULL,\n  nombre         VARCHAR(30) NOT NULL,\n  tipo           CHAR(8)     DEFAULT 'Interior' NOT NULL,\n  m2             NUMBER(7,2) NOT NULL,\n  CONSTRAINT instalacion_pk PRIMARY KEY(instalacion_id),\n  CONSTRAINT tipo_check CHECK (tipo IN ('Interior', 'Exterior')),\n  CONSTRAINT m2_check   CHECK (m2>0)\n);\n\nCREATE TABLE monitor (\n  dni       CHAR(9)     NOT NULL,\n  nombre    VARCHAR(30) NOT NULL,\n  telefono  NUMBER(9)   NOT NULL,\n  fcontrato DATE        NOT NULL,  \n  salario   NUMBER(6,2) NOT NULL,\n  CONSTRAINT monitor_pk PRIMARY KEY(dni),\n  CONSTRAINT monitor_ak UNIQUE(telefono),\n  CONSTRAINT salario_check CHECK (salario>0)\n);\n\nCREATE TABLE actividad (\n  actividad_id   CHAR(3)     NOT NULL,\n  nombre         VARCHAR(30) NOT NULL,\n  nivel          CHAR(8)     DEFAULT 3 NOT NULL,\n  precio         NUMBER(4,2) NULL,\n  responsable    CHAR(9)     NOT NULL,\n  instalacion_id CHAR(3)     NOT NULL,\n  CONSTRAINT actividad_pk PRIMARY KEY(actividad_id),\n  CONSTRAINT actividad_fk_monitor\n    FOREIGN KEY(responsable)\n    REFERENCES monitor(dni),\n  CONSTRAINT actividad_fk_instalacion \n    FOREIGN KEY(instalacion_id)\n    REFERENCES instalacion(instalacion_id),\n  CONSTRAINT nivel_check  CHECK (nivel BETWEEN 1 AND 5),\n  CONSTRAINT precio_check CHECK (precio IS NULL OR precio>=0)\n);\n\nCREATE TABLE especialista (\n  monitor_id   CHAR(9)     NOT NULL,\n  actividad_id CHAR(3)     NOT NULL,\n  CONSTRAINT especialista_pk PRIMARY KEY(monitor_id, actividad_id),\n  CONSTRAINT especialista_fk_monitor \n    FOREIGN KEY(monitor_id)\n    REFERENCES monitor(dni),\n  CONSTRAINT especialista_fk_actividad \n    FOREIGN KEY(actividad_id)\n    REFERENCES actividad(actividad_id)\n);\n\nCREATE TABLE sesion (\n  actividad_id CHAR(3)     NOT NULL,\n  diasemana    CHAR(1)     NOT NULL,\n  hora         NUMBER(4,2) NOT NULL,\n  monitor_id   CHAR(9)     NOT NULL,\n  CONSTRAINT sesion_pk PRIMARY KEY(actividad_id, diasemana, hora),\n  CONSTRAINT sesion_fk_actividad \n    FOREIGN KEY(actividad_id)\n    REFERENCES actividad(actividad_id),\n  CONSTRAINT sesion_fk_monitor FOREIGN KEY(monitor_id)\n    REFERENCES monitor(dni),\n  CONSTRAINT diasemana_check  \n    CHECK (diasemana IN ('L', 'M', 'X', 'J', 'V', 'S'))\n);\n\n*** CQL Cassandra ***\n\nCREATE KEYSPACE CentroDeportivo \nWITH replication = { 'class': 'SimpleStrategy', 'replication_factor': 3 };\n\n\nUSE CentroDeportivo;\n\nCREATE TABLE Instalacion (\n    instalacion_id TEXT PRIMARY KEY,  \n    nombre TEXT,\n    tipo TEXT,\n    m2 DOUBLE\n);\n\nCREATE TABLE monitor (\n    dni TEXT PRIMARY KEY,\n    nombre TEXT,\n    telefono BIGINT,\n    fcontrato TIMESTAMP,\n    salario DOUBLE,\n    especialista SET<TEXT>  \n);\n\nCREATE TABLE Actividad (\n    actividad_id TEXT PRIMARY KEY, \n    nombre TEXT,\n    nivel INT,\n    precio DOUBLE,\n    responsable TEXT, \n    instalacion_id TEXT\n);\n\nCREATE TABLE Sesion (\n    actividad_id TEXT,\n    diasemana TEXT,\n    hora DOUBLE,\n    monitor_id TEXT,\n    PRIMARY KEY (actividad_id, diasemana, hora) \n);\n\n*** JSON para MongoDB ****\n\nuse CentroDeportivo;\n\ndb.createCollection(\"Instalacion\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"instalacion_id\", \"nombre\", \"tipo\", \"m2\"],\n      properties: {\n        instalacion_id: { bsonType: \"string\", description: \"ID de la instalación, requerido y debe ser string.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre de la instalación, requerido y debe ser string.\" },\n        tipo: { enum: [\"Interior\", \"Exterior\"], description: \"Tipo debe ser Interior o Exterior.\" },\n        m2: { bsonType: \"double\", minimum: 1, maximum: 9999999, description: \"Superficie en m2, debe estar entre 1 y 9999999.\" }\n      }\n    }\n  }\n});\n\ndb.Instalacion.createIndex({ instalacion_id: 1 }, { unique: true });\n\ndb.createCollection(\"Monitor\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"dni\", \"nombre\", \"telefono\", \"fcontrato\", \"salario\", \"especialista\"],\n      properties: {\n        dni: { bsonType: \"string\", description: \"DNI del monitor, requerido y debe ser string.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre del monitor, requerido y debe ser string.\" },\n        telefono: { bsonType: \"int\", minimum: 600000000, maximum: 999999999, description: \"Teléfono debe ser un número entre 600000000 y 999999999.\" },\n        fcontrato: { bsonType: \"date\", description: \"Fecha de contrato, debe ser date.\" },\n        salario: { bsonType: \"double\", minimum: 0, maximum: 999999, description: \"Salario, debe estar entre 0 y 999999.\" },\n        especialista: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"Lista de IDs de actividades especializadas.\" }\n      }\n    }\n  }\n});\n\ndb.Monitor.createIndex({ dni: 1 }, { unique: true });\n\ndb.createCollection(\"Actividad\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"actividad_id\", \"nombre\", \"nivel\", \"responsable\", \"instalacion\", \"sesiones\"],\n      properties: {\n        actividad_id: { bsonType: \"string\", description: \"ID de la actividad, requerido y debe ser string.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre de la actividad, requerido y debe ser string.\" },\n        nivel: { bsonType: \"int\", minimum: 1, maximum: 5, description: \"Nivel debe estar entre 1 y 5.\" },\n        precio: { bsonType: \"double\", minimum: 0, maximum: 9999, description: \"Precio opcional, entre 0 y 9999.\" },\n        responsable: { bsonType: \"string\", description: \"Referencia al monitor responsable.\" },\n        instalacion: { bsonType: \"string\", description: \"Referencia a la instalación donde se imparte la actividad.\" },\n        sesiones: {\n          bsonType: \"array\",\n          items: {\n            bsonType: \"object\",\n            required: [\"diasemana\", \"hora\", \"monitor\"],\n            properties: {\n              diasemana: { enum: [\"L\", \"M\", \"X\", \"J\", \"V\", \"S\"], description: \"Día de la semana debe ser un valor válido.\" },\n              hora: { bsonType: \"double\", description: \"Hora\" },\n              monitor: { bsonType: \"string\", description: \"Referencia al monitor que imparte la sesión.\" }\n            }\n          },\n          description: \"Lista de sesiones de la actividad.\"\n        }\n      }\n    }\n  }\n});\n\ndb.Actividad.createIndex({ actividad_id: 1 }, { unique: true });\n\n***** example SoftwareDev en Athena, SQL, CQL y JSON/MongoDB *****\n\nSchema SoftwareDev:1\n\nFSet Popularity_features\n{\n  num_forks: Integer (0..1000),\n  num_stars: Integer (0..1000)\n}\n\nFSet Timestamp_features\n{\n  created_time: Timestamp,\n  last_activity_date:Timestamp\n}\n\nRoot entity Developer\n{\n  Common\n  {\n    +id: Identifier,\n    dev_info: Aggr<DeveloperInfo>&,\n    !email: String /^.+@.+\\\\.com$/,\n    permissions: String in (\"R\",\"W\",\"X\",\"RW\",\"RX\",\"WX\",\"RWX\")\n  }\n  Variation 1\n  {\n    is_active: Boolean\n  }\n  Variation 2\n  {\n    suspended_acc: Option<String, Boolean>\n  }\n}\n\nEntity DeveloperInfo\n{\n  ?about_me: String,\n  name: String /^[A-Z][a-z]*$/,\n  team: String\n}\n\nRoot entity Repository\n{\n  +id: Identifier,\n  developers: Ref<Developer>+,\n  requests: [{branch: String, status: String in (\"Open\", \"Closed\"), numLabels: Number}],\n  ?tags: List<String>,\n  title: String,\n  url: String\n}U Popularity_features\n U Timestamp_features\n\nRoot entity Ticket\n  SQL CREATE TABLE Ticket(\n    id VARCHAR(255)NOT NULL,\n    message VARCHAR(255)NOT NULL,\n    repository_id VARCHAR(255)NOT NULL,\n    developer_id VARCHAR(255)NOT NULL,\n    FOREIGN KEY (repository_id)\n REFERENCES Repository(id),\n    FOREIGN KEY (developer_id)\n REFERENCES Developer (id),\n    PRIMARY KEY (id)\n  );\n +Popularity_features\n +Timestamp_features\n\n*** SQL ***\n\nCREATE TABLE Developer (\n    id VARCHAR(255) NOT NULL,\n    email VARCHAR(255) NOT NULL,\n    permissions VARCHAR(3) NOT NULL,\n    is_active BOOLEAN NULL,  \n    suspended_acc VARCHAR(255) NULL,\n    CONSTRAINT developer_pk PRIMARY KEY (id),\n    CONSTRAINT email_check CHECK (email REGEXP '^.+@.+\\\\.com$'),\n    CONSTRAINT permissions_check CHECK (permissions IN ('R', 'W', 'X', 'RW', 'RX', 'WX', 'RWX')),\n    CONSTRAINT suspended_acc_check CHECK (suspended_acc IN ('true', 'false'))\n);\n\nCREATE TABLE DeveloperInfo (\n    developer_id VARCHAR(255) NOT NULL,\n    about_me VARCHAR(255) NULL,\n    name VARCHAR(255) NOT NULL,\n    team VARCHAR(255) NOT NULL,\n    CONSTRAINT developer_info_pk PRIMARY KEY (developer_id),\n    CONSTRAINT developer_info_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT name_check CHECK (name REGEXP '^[A-Z][a-z]*$')\n);\n\nCREATE TABLE Repository (\n    id VARCHAR(255) NOT NULL,\n    title VARCHAR(255) NOT NULL,\n    url VARCHAR(255) NOT NULL,\n    tags JSON DEFAULT NULL, \n    num_forks INT NOT NULL,\n    num_stars INT NOT NULL,\n    created_time TIMESTAMP NOT NULL,\n    last_activity_date TIMESTAMP NOT NULL,\n    CONSTRAINT repository_pk PRIMARY KEY (id),\n    CONSTRAINT num_forks_check CHECK (num_forks BETWEEN 0 AND 1000),\n    CONSTRAINT num_stars_check CHECK (num_stars BETWEEN 0 AND 1000)\n);\n\nCREATE TABLE Developer_Repository (\n    developer_id VARCHAR(255) NOT NULL,\n    repository_id VARCHAR(255) NOT NULL,\n    CONSTRAINT developer_repository_pk PRIMARY KEY (developer_id, repository_id),\n    CONSTRAINT developer_repository_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT developer_repository_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id)\n);\n\nCREATE TABLE Requests (\n    repository_id VARCHAR(255) NOT NULL,\n    branch VARCHAR(255) NOT NULL,\n    status ENUM('Open', 'Closed') NOT NULL,\n    numLabels INT NOT NULL,\n    CONSTRAINT requests_pk PRIMARY KEY (repository_id, branch),\n    CONSTRAINT requests_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id)\n);\n\nCREATE TABLE Ticket (\n    id VARCHAR(255) NOT NULL,\n    message VARCHAR(255) NOT NULL,\n    repository_id VARCHAR(255) NOT NULL,\n    developer_id VARCHAR(255) NOT NULL,\n    num_forks INT NOT NULL,\n    num_stars INT NOT NULL,\n    created_time TIMESTAMP NOT NULL,\n    last_activity_date TIMESTAMP NOT NULL,\n    CONSTRAINT ticket_pk PRIMARY KEY (id),\n    CONSTRAINT ticket_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id),\n    CONSTRAINT ticket_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT num_forks_check CHECK (num_forks BETWEEN 0 AND 1000),\n    CONSTRAINT num_stars_check CHECK (num_stars BETWEEN 0 AND 1000)\n);\n\n***CQL Cassandra ****\n\nCREATE KEYSPACE SoftwareDev \nWITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};\n\nUSE SoftwareDev;\n\nCREATE TABLE Developer (\n    id TEXT PRIMARY KEY,\n    email TEXT,\n    dev_info_name TEXT,\n    dev_info_team TEXT,\n    dev_info_about_me TEXT,\n    permissions TEXT,\n    is_active BOOLEAN,\n    suspended_acc TEXT\n);\n\n\nCREATE TABLE Repository (\n    id TEXT PRIMARY KEY,\n    title TEXT,\n    url TEXT,\n    developers LIST<TEXT>,\n    requests LIST<FROZEN<TUPLE<TEXT, TEXT, INT>>>,\n    tags LIST<TEXT>,\n    num_forks INT,\n    num_stars INT,\n    created_time TIMESTAMP,\n    last_activity_date TIMESTAMP\n);\n\nCREATE TABLE Ticket (\n    id TEXT PRIMARY KEY,\n    message TEXT,\n    repository_id TEXT,\n    developer_id TEXT,\n    num_forks INT,\n    num_stars INT,\n    created_time TIMESTAMP,\n    last_activity_date TIMESTAMP\n);\n\n*** JSON para MongoDB *****\n\nuse SoftwareDev;\n\ndb.createCollection(\"Developer\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"email\", \"permissions\", \"dev_info\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del Developer, debe ser string y es requerido.\" },\n        dev_info: {\n          bsonType: \"object\",\n          required: [\"name\", \"team\"],\n          properties: {\n            about_me: { bsonType: \"string\", description: \"Información opcional sobre el developer.\" },\n            name: { bsonType: \"string\", pattern: \"^[A-Z][a-z]*$\", description: \"Debe empezar con mayúscula.\" },\n            team: { bsonType: \"string\", description: \"Nombre del equipo al que pertenece el developer.\" }\n          }\n        },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        permissions: { enum: [\"R\", \"W\", \"X\", \"RW\", \"RX\", \"WX\", \"RWX\"], description: \"Permisos válidos del developer.\" },\n        is_active: { bsonType: \"bool\", description: \"Indica si el usuario está activo.\" },\n        suspended_acc: { anyOf: [{ bsonType: \"string\" }, { bsonType: \"bool\" }], description: \"Puede ser un String o Boolean.\" }\n      }\n    }\n  }\n});\n\ndb.createCollection(\"Repository\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"title\", \"url\", \"developers\", \"requests\", \"created_time\", \"last_activity_date\", \"num_forks\", \"num_stars\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del repositorio, debe ser string y es requerido.\" },\n        title: { bsonType: \"string\", description: \"Título del repositorio, requerido.\" },\n        url: { bsonType: \"string\", description: \"URL del repositorio, requerido.\" },\n        developers: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de IDs de developers asignados al repositorio.\"\n        },\n        requests: {\n          bsonType: \"array\",\n          items: {\n            bsonType: \"object\",\n            required: [\"branch\", \"status\", \"numLabels\"],\n            properties: {\n              branch: { bsonType: \"string\", description: \"Nombre de la rama.\" },\n              status: { enum: [\"Open\", \"Closed\"], description: \"Estado de la solicitud (Open/Closed).\" },\n              numLabels: { bsonType: \"int\", description: \"Número de etiquetas asociadas a la solicitud.\" }\n            }\n          }\n        },\n        tags: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de etiquetas opcionales para el repositorio.\"\n        },\n        created_time: { bsonType: \"date\", description: \"Fecha de creación del repositorio.\" },\n        last_activity_date: { bsonType: \"date\", description: \"Última actividad en el repositorio.\" },\n        num_forks: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de forks, entre 0 y 1000.\" },\n        num_stars: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de estrellas, entre 0 y 1000.\" }\n      }\n    }\n  }\n});\n\ndb.createCollection(\"Ticket\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"message\", \"repository_id\", \"developer_id\", \"created_time\", \"last_activity_date\", \"num_forks\", \"num_stars\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del ticket, debe ser string y es requerido.\" },\n        message: { bsonType: \"string\", description: \"Mensaje del ticket, requerido.\" },\n        repository_id: { bsonType: \"string\", description: \"ID del repositorio asociado.\" },\n        developer_id: { bsonType: \"string\", description: \"ID del developer asignado.\" },\n        created_time: { bsonType: \"date\", description: \"Fecha de creación del ticket.\" },\n        last_activity_date: { bsonType: \"date\", description: \"Última actividad en el ticket.\" },\n        num_forks: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de forks asociados al ticket.\" },\n        num_stars: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de estrellas asociadas al ticket.\" }\n      }\n    }\n  }\n});\n\n*** example UMUGram  en Athena, SQL, CQL y JSON/MongoDB *********\n\nSchema Umugram:1\n\nfSet MetaInfo\n{\n  create_at: Timestamp,\n  update_at: Timestamp\n}\n\nroot entity User\n{\n  +id: Identifier,\n  !username: String,\n  !email: String /^.+@.+\\\\.com$/,\n  password: String,\n  birthday: Timestamp,\n  profile: {nameProfile: String,\n  ?avatar_url: String,\n  ?decription: String,\n  ?website: String},\n  followers: ref<User>*,\n  following: ref<User>*,\n  userComments: ref<Comment>*,\n  userPosts: ref<Post>*\n} U MetaInfo\n\nroot entity Comment\n{\n  +id: Identifier,\n  text: String,\n  post: ref<Post>&,\n  replyTo: ref<Comment>&,\n  user: ref<User>&\n} + MetaInfo\n\nroot entity Post\n{\n  Common\n  {\n    +id: Identifier,\n    ?caption: String,\n    user: ref<User>&,\n    ?description: String\n  } + MetaInfo\n  \n  Variation 1\n  {\n    photoUrl: String\n  }\n  Variation 2\n  {\n    videoUrl: String,\n    duration: double,\n    lastMinute: double\n  }\n}\n\n/*Tambien se puede ver como una herencia \n \nroot entity Post{\n\t+id: Identifier,\n\t?caption: String,\n\tuser: ref<User>&,\n\t?description: String\n}\n\nentity PhotoPost::Post{\n\tphotoUrl: String\n}\n\nentity VideoPost::Post{\n\tvideoUrl: String,\n    duration: double,\n    lastMinute: double\n}\n */\n\n**** SQL ***\n\nCREATE TABLE User (\n    id VARCHAR(255) NOT NULL,\n    username VARCHAR(255) NOT NULL,\n    email VARCHAR(255) NOT NULL,\n    password VARCHAR(255) NOT NULL,\n    birthday TIMESTAMP NOT NULL,\n    nameProfile VARCHAR(255) NOT NULL,\n    avatar_url VARCHAR(255) NULL,\n    description VARCHAR(255) NULL,\n    website VARCHAR(255) NULL,\n    created_at TIMESTAMP NOT NULL,\n    updated_at TIMESTAMP NOT NULL,\n    CONSTRAINT user_pk PRIMARY KEY (id),\n    CONSTRAINT user_uk_username UNIQUE(username),\n    CONSTRAINT user_uk_email UNIQUE(email),\n    CONSTRAINT email_check CHECK (email REGEXP '^.+@.+\\\\.com$')\n);\n\nCREATE TABLE Followers (\n    follower_id VARCHAR(255) NOT NULL,\n    following_id VARCHAR(255) NOT NULL,\n    PRIMARY KEY (follower_id, following_id),\n    FOREIGN KEY (follower_id) REFERENCES User(id),\n    FOREIGN KEY (following_id) REFERENCES User(id)\n);\n\nCREATE TABLE Post (\n    id VARCHAR(255) NOT NULL,\n    caption VARCHAR(255) NULL,\n    description VARCHAR(255) NULL,\n    user_id VARCHAR(255) NOT NULL,\n    created_at TIMESTAMP NOT NULL,\n    updated_at TIMESTAMP NOT NULL,\n    CONSTRAINT post_pk PRIMARY KEY (id),\n    CONSTRAINT post_fk_user FOREIGN KEY (user_id) REFERENCES User(id) \n);\n\nCREATE TABLE VideoPost (\n    id VARCHAR(255) NOT NULL,\n    videoUrl VARCHAR(255) NOT NULL,\n    duration DOUBLE NOT NULL,\n    lastMinute DOUBLE NOT NULL,\n    CONSTRAINT videopost_pk PRIMARY KEY (id),\n    CONSTRAINT videopost_fk_post FOREIGN KEY (id) REFERENCES Post(id) \n);\n\nCREATE TABLE PhotoPost (\n    id VARCHAR(255) NOT NULL,\n    photoUrl VARCHAR(255) NOT NULL,\n    CONSTRAINT photopost_pk PRIMARY KEY (id),\n    CONSTRAINT photopost_fk_post FOREIGN KEY (id) REFERENCES Post(id) \n);\n\nCREATE TABLE Comment (\n    id VARCHAR(255) NOT NULL,\n    text TEXT NOT NULL,\n    post VARCHAR(255) NOT NULL,\n    replyTo VARCHAR(255) NULL,\n    user VARCHAR(255) NOT NULL,\n    created_at TIMESTAMP NOT NULL,\n    updated_at TIMESTAMP NOT NULL,\n    CONSTRAINT comment_pk PRIMARY KEY (id),\n    CONSTRAINT comment_fk_post FOREIGN KEY (post) REFERENCES Post(id) ON DELETE CASCADE,\n    CONSTRAINT comment_fk_reply FOREIGN KEY (replyTo) REFERENCES Comment(id) ON DELETE CASCADE,\n    CONSTRAINT comment_fk_user FOREIGN KEY (user) REFERENCES User(id) ON DELETE CASCADE\n);\n\n**** CQL Cassandra ****\n\nCREATE KEYSPACE Umugram\nWITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};\n\nuse Umugram;\n\nCREATE TABLE User (\n    id TEXT PRIMARY KEY, \n    username TEXT,\n    email TEXT,\n    password TEXT,\n    birthday TIMESTAMP,\n    profile MAP<TEXT, TEXT>,  \n    followers SET<TEXT>,  \n    following SET<TEXT>,  \n    userComments LIST<TEXT>, \n    userPosts LIST<TEXT>, \n    create_at TIMESTAMP,\n    update_at TIMESTAMP\n);\n\nCREATE TABLE Post (\n    id TEXT PRIMARY KEY, \n    user_id TEXT,  \n    caption TEXT,\n    description TEXT,\n    create_at TIMESTAMP,\n    update_at TIMESTAMP,\n    photoUrl TEXT, \n    videoUrl TEXT, \n    duration DOUBLE, \n    lastMinute DOUBLE \n);\n\nCREATE TABLE Comment (\n    id TEXT PRIMARY KEY, \n    text TEXT, \n    post_id TEXT, \n    replyTo_id TEXT, \n    user_id TEXT, \n    create_at TIMESTAMP,\n    update_at TIMESTAMP\n);\n\n\n**** JSON para MongoDB ****\n\nuse Umugram;\n\ndb.createCollection(\"User\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"username\", \"email\", \"password\", \"birthday\", \"profile\", \"followers\", \"following\", \"userComments\", \"userPosts\", \"create_at\", \"update_at\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del usuario, requerido y debe ser string.\" },\n        username: { bsonType: \"string\", description: \"Nombre de usuario, requerido y debe ser string.\" },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        password: { bsonType: \"string\", description: \"Contraseña, requerida y debe ser string.\" },\n        birthday: { bsonType: \"date\", description: \"Fecha de nacimiento del usuario.\" },\n        profile: {\n          bsonType: \"object\",\n          required: [\"nameProfile\"],\n          properties: {\n            nameProfile: { bsonType: \"string\", description: \"Nombre del perfil, requerido y debe ser string.\" },\n            avatar_url: { bsonType: \"string\", description: \"URL del avatar, opcional.\" },\n            decription: { bsonType: \"string\", description: \"Descripción del usuario, opcional.\" },\n            website: { bsonType: \"string\", description: \"Sitio web del usuario, opcional.\" }\n          }\n        },\n        followers: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"Lista de seguidores.\" },\n        following: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"Lista de usuarios seguidos.\" },\n        userComments: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"Lista de comentarios hechos por el usuario.\" },\n        userPosts: { bsonType: \"array\", items: { bsonType: \"string\" }, description: \"Lista de publicaciones del usuario.\" },\n        create_at: { bsonType: \"date\", description: \"Fecha de creación del usuario.\" },\n        update_at: { bsonType: \"date\", description: \"Fecha de actualización del usuario.\" }\n      }\n    }\n  }\n});\n\ndb.User.createIndex({ id: 1 }, { unique: true });\ndb.User.createIndex({ email: 1 }, { unique: true });\ndb.User.createIndex({ username: 1 }, { unique: true });\n\ndb.createCollection(\"Comment\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"text\", \"post\", \"replyTo\", \"user\", \"create_at\", \"update_at\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del comentario, requerido y debe ser string.\" },\n        text: { bsonType: \"string\", description: \"Texto del comentario, requerido y debe ser string.\" },\n        post: { bsonType: \"string\", description: \"Referencia al post al que pertenece el comentario.\" },\n        replyTo: { bsonType: \"string\", description: \"Referencia al comentario al que responde.\" },\n        user: { bsonType: \"string\", description: \"Referencia al usuario que hizo el comentario.\" },\n        create_at: { bsonType: \"date\", description: \"Fecha de creación del comentario.\" },\n        update_at: { bsonType: \"date\", description: \"Fecha de actualización del comentario.\" }\n      }\n    }\n  }\n});\n\ndb.Comment.createIndex({ id: 1 }, { unique: true });\n\ndb.createCollection(\"Post\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"user\", \"create_at\", \"update_at\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del post, requerido y debe ser string.\" },\n        caption: { bsonType: \"string\", description: \"Título o descripción corta del post, opcional.\" },\n        user: { bsonType: \"string\", description: \"Referencia al usuario que publicó el post.\" },\n        description: { bsonType: \"string\", description: \"Descripción del post, opcional.\" },\n        create_at: { bsonType: \"date\", description: \"Fecha de creación del post.\" },\n        update_at: { bsonType: \"date\", description: \"Fecha de actualización del post.\" },\n        \n        photoUrl: { bsonType: \"string\", description: \"URL de la imagen, si es un PhotoPost.\" },\n\n        videoUrl: { bsonType: \"string\", description: \"URL del video, si es un VideoPost.\" },\n        duration: { bsonType: \"double\", minimum: 0, description: \"Duración del video en segundos.\" },\n        lastMinute: { bsonType: \"double\", minimum: 0, description: \"Último minuto visto del video.\" }\n      },\n      oneOf: [\n        {\n          required: [\"photoUrl\"], \n          description: \"Debe ser un PhotoPost si tiene photoUrl.\"\n        },\n        {\n          required: [\"videoUrl\", \"duration\", \"lastMinute\"], \n          description: \"Debe ser un VideoPost si tiene videoUrl, duration y lastMinute.\"\n        }\n      ]\n    }\n  }\n});\n\ndb.Post.createIndex({ id: 1 }, { unique: true });\n\n****example Vigilancias en Athena, SQL, CQL y JSON/MongoDB ********\n\nSchema Vigilancias:1\n\nRoot entity Departamento\n{\n  +siglas: Identifier,\n  nombre: String,\n  cuantos_profesores: Integer (0..99)\n}\n\nRoot entity Profesor\n{\n  +DNI: Identifier,\n  nombre: String,\n  ?!email: String,\n  categoria: String in (\"CU\", \"TU\", \"CEU\", \"TEU\", \"AYD\", \"ASO\", \"CD\") ,\n  departamento: Ref<Departamento>&,\n  ?asignatura: Ref<Asignatura>?,\n  ?creditos: Integer (1..99),\n  TelefonoProfesores: aggr<TelefonoProfesor>+\n}\n\nRoot entity Asignatura\n{\n  +codigo: Identifier,\n  nombre: String,\n  cuatrimestre: Integer in (0, 1, 2),\n  departamento: Ref<Departamento>&,\n  !coordinador: Ref<Profesor>&,\n  ?prerrequisito: Ref<Asignatura>?,\n  Examenes: Aggr<Examen>+\n}\n\nentity Examen\n{\n  curso: String,\n  convocatoria: String in (\"Junio\", \"Julio\", \"Enero\"),\n  fecha_hora: Timestamp,\n  duracion: Integer (1..999),\n  vigilante: Ref<Profesor>&,\n  aula: Ref<Aula>+\n}\n\nRoot entity Aula\n{\n  +codigo: Identifier,\n  capacidad: Integer (1..999),\n  puestos_examen: Integer (1..999),\n  ?nombre: String,\n  centro: String\n}\n\nentity TelefonoProfesor\n{\n  telefono: Integer (600000000..999999999)\n}\n\n*** SQL ****\n\nCREATE TABLE DEPARTAMENTO(\n  siglas\tCHAR(5)\tNOT NULL,\n  nombre\tVARCHAR(50)\tNOT NULL,\n  cuantos_profesores NUMBER(2) DEFAULT 0 NOT NULL,\n\tCONSTRAINT departamento_pk PRIMARY KEY(siglas),\n\tCONSTRAINT departamento_ak UNIQUE(nombre)\n );\n\nCREATE TABLE PROFESOR(\n  DNI          CHAR(9)\t    NOT NULL,\n  nombre       VARCHAR(40)\tNOT NULL,\n  email        VARCHAR(15)\tNULL, \n  categoria    CHAR(3)\t    NOT NULL,\n  departamento CHAR(5)\t    NOT NULL, \n  asignatura\t CHAR(4)        NULL, \n  creditos     NUMBER(2)      NULL,\n  CONSTRAINT profesor_pk PRIMARY KEY(DNI),\n  CONSTRAINT profesor_ak UNIQUE(email),\n  CONSTRAINT profesor_fk_departamento\n    FOREIGN KEY(departamento) \n\t\tREFERENCES DEPARTAMENTO(siglas),\n  CONSTRAINT profesor_check1 \n      CHECK (categoria IN ('CU','TU','CEU','TEU','AYD','ASO','CD')),\n  CONSTRAINT profesor_check2 CHECK (creditos > 0) \n );\n\nCREATE TABLE ASIGNATURA (\n  codigo        CHAR(4)\t  NOT NULL,\n  nombre        VARCHAR(50) NOT NULL, \n  cuatrimestre  NUMBER(1)   NOT NULL,\n  departamento  CHAR(5)     NOT NULL, \n  coordinador   CHAR(9)     NOT NULL,\n  prerrequisito CHAR(4)     NULL, \n  CONSTRAINT asignatura_pk PRIMARY KEY(codigo),\n  CONSTRAINT asignatura_ak UNIQUE(coordinador), \n  CONSTRAINT asignatura_fk_departamento\n    FOREIGN KEY(departamento)\n\t\tREFERENCES DEPARTAMENTO(siglas),\n  CONSTRAINT asignatura_fk_profesor\n    FOREIGN KEY(coordinador)\n\t\tREFERENCES PROFESOR(DNI),\n  CONSTRAINT asignatura_fk_prerrequisito\n    FOREIGN KEY(prerrequisito)\n\t\tREFERENCES ASIGNATURA(codigo),\n  CONSTRAINT asignatura_check1 CHECK (cuatrimestre IN (0, 1, 2)), \n  CONSTRAINT asignatura_check2 CHECK (codigo <> prerrequisito) \n );\n \n ALTER TABLE PROFESOR \n  ADD CONSTRAINT profesor_fk_asignatura\n      FOREIGN KEY(asignatura) \n\t\t  REFERENCES ASIGNATURA(codigo);\n\nCREATE TABLE EXAMEN(\n  asignatura     CHAR(4)\t   NOT NULL, \n  curso          CHAR(9)\t   NOT NULL,\n  convocatoria   VARCHAR(10)   NOT NULL,\n  fecha_hora     DATE\t       NOT NULL, \n  duracion       NUMBER(3) DEFAULT 1 NOT NULL,\n  CONSTRAINT examen_pk PRIMARY KEY (asignatura,curso,convocatoria),\n  CONSTRAINT examen_fk_asignatura\n    FOREIGN KEY(asignatura)\n\t\tREFERENCES ASIGNATURA(codigo),\n  CONSTRAINT examen_check1 \n    CHECK (convocatoria IN ('Junio', 'Julio', 'Enero')),\nCONSTRAINT examen_check2 \n    CHECK (duracion > 0)   \n );\n\nCREATE TABLE VIGILANCIA( \n  profesor     CHAR(9) NOT NULL,\n  asignatura   CHAR(4) NOT NULL,\n  curso        CHAR(9) NOT NULL,\n  convocatoria VARCHAR(10),\n  CONSTRAINT vigilancia_pk \n    PRIMARY KEY(profesor, asignatura, curso, convocatoria),\n  CONSTRAINT vigilancia_profesor\n    FOREIGN KEY (profesor) \n    REFERENCES PROFESOR(DNI),\n  CONSTRAINT vigilancia_examen\n    FOREIGN KEY (asignatura, curso, convocatoria)\n    REFERENCES EXAMEN(asignatura, curso, convocatoria) \n );\n      \nCREATE TABLE AULA(\n  codigo         CHAR(4)      NOT NULL,\n  capacidad      NUMBER(3)    NOT NULL,\n  puestos_examen NUMBER(3)    NOT NULL,\n  nombre         VARCHAR(30)  NULL,\n  centro         VARCHAR(25)  NOT NULL, \n  CONSTRAINT aula_pk PRIMARY KEY (codigo),\n  CONSTRAINT aula_check1 CHECK (capacidad > 0), \n  CONSTRAINT aula_check2 CHECK (puestos_examen > 0)\n);\n\nCREATE TABLE AULA_EXAMEN( \n  aula\t       CHAR(4) NOT NULL,\n  asignatura\t CHAR(4) NOT NULL,\n  curso\t       CHAR(9) NOT NULL,\n  convocatoria VARCHAR(10),\n  CONSTRAINT aula_examen_pk\n   PRIMARY KEY(aula,asignatura,curso,convocatoria),\n  CONSTRAINT aula_examen_fk_aula\n    FOREIGN KEY (aula) \n    REFERENCES AULA(codigo),\n  CONSTRAINT aula_examen_fk_examen\n \tFOREIGN KEY (asignatura, curso, convocatoria)\n \tREFERENCES EXAMEN(asignatura, curso, convocatoria) \n );\n\nCREATE TABLE TELEFONO_PROFESOR (\n  profesor CHAR(9)   NOT NULL,\n  telefono NUMBER(9) NOT NULL,\n  PRIMARY KEY(profesor, telefono),\n  CONSTRAINT telefono_profesor_fk_profesor\n    FOREIGN KEY (profesor) \n\t  REFERENCES PROFESOR(DNI)\n);\n\n**** CQL Cassandra ****\nCREATE KEYSPACE Vigilancias\nWITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};\n\nuse Vigilancias;\n\nCREATE TABLE Departamento (\n    siglas TEXT PRIMARY KEY,\n    nombre TEXT,\n    cuantos_profesores INT\n);\n\nCREATE TABLE Profesor (\n    DNI TEXT PRIMARY KEY,\n    nombre TEXT,\n    email TEXT,\n    categoria TEXT,\n    departamento TEXT,\n    asignatura TEXT,\n    creditos INT,\n    TelefonoProfesores SET<TEXT>\n);\n\nCREATE TABLE Asignatura (\n    codigo TEXT PRIMARY KEY,\n    nombre TEXT,\n    cuatrimestre INT,\n    departamento TEXT,\n    coordinador TEXT,\n    prerrequisito TEXT\n);\n\nCREATE TABLE Examen (\n    asignatura TEXT,\n    curso TEXT,\n    convocatoria TEXT,\n    fecha_hora TIMESTAMP,\n    duracion INT,\n    vigilante TEXT,\n    aula LIST<TEXT>,\n    PRIMARY KEY ((asignatura, curso, convocatoria), fecha_hora)\n);\n\nCREATE TABLE Aula (\n    codigo TEXT PRIMARY KEY,\n    capacidad INT,\n    puestos_examen INT,\n    nombre TEXT,\n    centro TEXT\n);\n\n**** JSON para MongoDB ****\n\nuse Vigilancias;\n\ndb.createCollection(\"Departamento\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"siglas\", \"nombre\", \"cuantos_profesores\"],\n      properties: {\n        siglas: { bsonType: \"string\", description: \"Código del departamento (identificador único).\" },\n        nombre: { bsonType: \"string\", description: \"Nombre del departamento.\" },\n        cuantos_profesores: { bsonType: \"int\", minimum: 0, maximum: 99, description: \"Número de profesores en el departamento (0-99).\" }\n      }\n    }\n  }\n});\n\ndb.Departamento.createIndex({ siglas: 1 }, { unique: true });\n\n\ndb.createCollection(\"Profesor\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"DNI\", \"nombre\", \"categoria\", \"departamento\"],\n      properties: {\n        DNI: { bsonType: \"string\", description: \"DNI del profesor, requerido y debe ser string.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre del profesor, requerido y debe ser string.\" },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        categoria: { enum: [\"CU\", \"TU\", \"CEU\", \"TEU\", \"AYD\", \"ASO\", \"CD\"], description: \"Categoría válida del profesor.\" },\n        departamento: { bsonType: \"string\", description: \"Referencia al departamento al que pertenece el profesor.\" },\n        asignatura: { bsonType: \"string\", description: \"Referencia a la asignatura que imparte el profesor (opcional).\" },\n        creditos: { bsonType: \"int\", minimum: 1, maximum: 99, description: \"Número de créditos asignados al profesor (opcional).\" },\n        TelefonoProfesores: {\n          bsonType: \"array\",\n          description: \"Lista de teléfonos asociados al profesor.\",\n          items: {\n            bsonType: \"int\", minimum: 600000000, maximum: 999999999,\n            description: \"Número de teléfono del profesor, debe estar en el rango válido.\"\n          }\n        }\n      }\n    }\n  }\n});\n\ndb.Profesor.createIndex({ DNI: 1 }, { unique: true });\ndb.Profesor.createIndex({ email: 1 }, { unique: true, sparse: true });\n\n\ndb.createCollection(\"Asignatura\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"codigo\", \"nombre\", \"cuatrimestre\", \"departamento\", \"coordinador\"],\n      properties: {\n        codigo: { bsonType: \"string\", description: \"Código único de la asignatura.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre de la asignatura.\" },\n        cuatrimestre: { bsonType: \"int\", enum: [0, 1, 2], description: \"Cuatrimestre en el que se imparte (0, 1, 2).\" },\n        departamento: { bsonType: \"string\", description: \"Referencia al departamento que imparte la asignatura.\" },\n        coordinador: { bsonType: \"string\", description: \"Referencia al profesor coordinador de la asignatura.\" },\n        prerrequisito: { bsonType: \"string\", description: \"Referencia a la asignatura prerrequisito (opcional).\" },\n        Examenes: {\n          bsonType: \"array\",\n          description: \"Lista de exámenes de la asignatura.\",\n          items: {\n            bsonType: \"object\",\n            required: [\"curso\", \"convocatoria\", \"fecha_hora\", \"duracion\", \"vigilante\", \"aula\"],\n            properties: {\n              curso: { bsonType: \"string\", description: \"Curso académico del examen.\" },\n              convocatoria: { enum: [\"Junio\", \"Julio\", \"Enero\"], description: \"Convocatoria del examen.\" },\n              fecha_hora: { bsonType: \"date\", description: \"Fecha y hora del examen.\" },\n              duracion: { bsonType: \"int\", minimum: 1, maximum: 999, description: \"Duración del examen en minutos.\" },\n              vigilante: { bsonType: \"string\", description: \"Referencia al profesor vigilante del examen.\" },\n              aula: { bsonType: \"array\", minItems: 1,\n\t            items: {\n\t              bsonType: \"string\",\n\t              description: \"Referencia a las aulas donde se realiza el examen (código de aula).\"\n\t            },\n\t            description: \"Lista de aulas donde se imparte el examen (mínimo 1 aula).\"\n\t           }\n            }\n          }\n        }\n      }\n    }\n  }\n});\n\ndb.Asignatura.createIndex({ codigo: 1 }, { unique: true });\ndb.Asignatura.createIndex({ coordinador: 1 }, { unique: true });\n\ndb.createCollection(\"Aula\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"codigo\", \"capacidad\", \"puestos_examen\", \"centro\"],\n      properties: {\n        codigo: { bsonType: \"string\", description: \"Código único del aula.\" },\n        capacidad: { bsonType: \"int\", minimum: 1, maximum: 999, description: \"Capacidad total del aula.\" },\n        puestos_examen: { bsonType: \"int\", minimum: 1, maximum: 999, description: \"Número de puestos de examen.\" },\n        nombre: { bsonType: \"string\", description: \"Nombre del aula (opcional).\" },\n        centro: { bsonType: \"string\", description: \"Centro donde está ubicada el aula.\" }\n      }\n    }\n  }\n});\n\ndb.Aula.createIndex({ codigo: 1 }, { unique: true });\n\n***** example SoftwareProject en Athena, SQL, CQL y JSON/MongoDB *****\n\nSchema SoftwareProject:1\n\nImport SoftwareDev:1\n\nRoot entity Project\n{\n  +id: Identifier,\n  developers: Ref<ProjectDeveloper>+,\n  due_date: Timestamp,\n  name: String,\n  repositories:Ref<SoftwareDev:1.Repository>+\n}\n\nRoot entity ProjectManager::SoftwareDev:1.Developer\n{\n  in_active: Boolean,\n  managed_projects:Integer\n}\n\nRoot entity ProjectDeveloper::SoftwareDev:1.Developer\n{\n  languages: List<String>,\n  solved_tickets: Ref<SoftwareDev:1.Ticket>+\n}\n\n*** SQL ***\n\nCREATE TABLE Developer (\n    id VARCHAR(255) NOT NULL,\n    email VARCHAR(255) NOT NULL,\n    permissions VARCHAR(3) NOT NULL,\n    is_active BOOLEAN NULL,  \n    suspended_acc VARCHAR(255) NULL,\n    CONSTRAINT developer_pk PRIMARY KEY (id),\n    CONSTRAINT email_check CHECK (email REGEXP '^.+@.+\\\\.com$'),\n    CONSTRAINT permissions_check CHECK (permissions IN ('R', 'W', 'X', 'RW', 'RX', 'WX', 'RWX')),\n    CONSTRAINT suspended_acc_check CHECK (suspended_acc IN ('true', 'false'))\n);\n\nCREATE TABLE DeveloperInfo (\n    developer_id VARCHAR(255) NOT NULL,\n    about_me VARCHAR(255) NULL,\n    name VARCHAR(255) NOT NULL,\n    team VARCHAR(255) NOT NULL,\n    CONSTRAINT developer_info_pk PRIMARY KEY (developer_id),\n    CONSTRAINT developer_info_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT name_check CHECK (name REGEXP '^[A-Z][a-z]*$')\n);\n\nCREATE TABLE Repository (\n    id VARCHAR(255) NOT NULL,\n    title VARCHAR(255) NOT NULL,\n    url VARCHAR(255) NOT NULL,\n    tags JSON DEFAULT NULL, \n    num_forks INT NOT NULL,\n    num_stars INT NOT NULL,\n    created_time TIMESTAMP NOT NULL,\n    last_activity_date TIMESTAMP NOT NULL,\n    CONSTRAINT repository_pk PRIMARY KEY (id),\n    CONSTRAINT repository_num_forks_check CHECK (num_forks BETWEEN 0 AND 1000),\n    CONSTRAINT repository_num_stars_check CHECK (num_stars BETWEEN 0 AND 1000)\n);\n\nCREATE TABLE Developer_Repository (\n    developer_id VARCHAR(255) NOT NULL,\n    repository_id VARCHAR(255) NOT NULL,\n    CONSTRAINT developer_repository_pk PRIMARY KEY (developer_id, repository_id),\n    CONSTRAINT developer_repository_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT developer_repository_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id)\n);\n\nCREATE TABLE Requests (\n    repository_id VARCHAR(255) NOT NULL,\n    branch VARCHAR(255) NOT NULL,\n    status ENUM('Open', 'Closed') NOT NULL,\n    numLabels INT NOT NULL,\n    CONSTRAINT requests_pk PRIMARY KEY (repository_id, branch),\n    CONSTRAINT requests_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id)\n);\n\nCREATE TABLE Ticket (\n    id VARCHAR(255) NOT NULL,\n    message VARCHAR(255) NOT NULL,\n    repository_id VARCHAR(255) NOT NULL,\n    developer_id VARCHAR(255) NOT NULL,\n    num_forks INT NOT NULL,\n    num_stars INT NOT NULL,\n    created_time TIMESTAMP NOT NULL,\n    last_activity_date TIMESTAMP NOT NULL,\n    CONSTRAINT ticket_pk PRIMARY KEY (id),\n    CONSTRAINT ticket_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id),\n    CONSTRAINT ticket_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id),\n    CONSTRAINT ticket_num_forks_check CHECK (num_forks BETWEEN 0 AND 1000),\n    CONSTRAINT ticket_num_stars_check CHECK (num_stars BETWEEN 0 AND 1000)\n);\n\nCREATE TABLE Project (\n    id VARCHAR(255) NOT NULL,\n    due_date TIMESTAMP NOT NULL,\n    name VARCHAR(255) NOT NULL,\n    CONSTRAINT project_pk PRIMARY KEY (id)\n);\n\nCREATE TABLE Project_Developer (\n    project_id VARCHAR(255) NOT NULL,\n    developer_id VARCHAR(255) NOT NULL,\n    CONSTRAINT project_developer_pk PRIMARY KEY (project_id, developer_id),\n    CONSTRAINT project_developer_fk_project FOREIGN KEY (project_id) REFERENCES Project(id),\n    CONSTRAINT project_developer_fk_developer FOREIGN KEY (developer_id) REFERENCES Developer(id)\n);\n\nCREATE TABLE Project_Repository (\n    project_id VARCHAR(255) NOT NULL,\n    repository_id VARCHAR(255) NOT NULL,\n    CONSTRAINT project_repository_pk PRIMARY KEY (project_id, repository_id),\n    CONSTRAINT project_repository_fk_project FOREIGN KEY (project_id) REFERENCES Project(id),\n    CONSTRAINT project_repository_fk_repository FOREIGN KEY (repository_id) REFERENCES Repository(id)\n);\n\nCREATE TABLE ProjectManager (\n    id VARCHAR(255) NOT NULL,\n    in_active BOOLEAN NOT NULL,\n    managed_projects INT NOT NULL,\n    CONSTRAINT project_manager_pk PRIMARY KEY (id),\n    CONSTRAINT project_manager_fk_developer FOREIGN KEY (id) REFERENCES Developer(id)\n);\n\nCREATE TABLE ProjectDeveloper (\n    id VARCHAR(255) NOT NULL,\n    languages JSON NOT NULL,\n    CONSTRAINT project_developer_pk PRIMARY KEY (id),\n    CONSTRAINT project_developer_fk_developer FOREIGN KEY (id) REFERENCES Developer(id)\n);\n\nCREATE TABLE ProjectDeveloper_Ticket (\n    project_developer_id VARCHAR(255) NOT NULL,\n    ticket_id VARCHAR(255) NOT NULL,\n    CONSTRAINT project_developer_ticket_pk PRIMARY KEY (project_developer_id, ticket_id),\n    CONSTRAINT project_developer_ticket_fk_project_developer FOREIGN KEY (project_developer_id) REFERENCES ProjectDeveloper(id),\n    CONSTRAINT project_developer_ticket_fk_ticket FOREIGN KEY (ticket_id) REFERENCES Ticket(id)\n);\n\n**** CQL Cassandra *****\n\nCREATE KEYSPACE SoftwareProject \nWITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3};\n\nUSE SoftwareProject;\n\nCREATE TABLE Developer (\n    id TEXT PRIMARY KEY,\n    email TEXT,\n    dev_info_name TEXT,\n    dev_info_team TEXT,\n    dev_info_about_me TEXT,\n    permissions TEXT,\n    is_active BOOLEAN,\n    suspended_acc TEXT\n);\n\n\nCREATE TABLE Repository (\n    id TEXT PRIMARY KEY,\n    title TEXT,\n    url TEXT,\n    developers LIST<TEXT>,\n    requests LIST<FROZEN<TUPLE<TEXT, TEXT, INT>>>,\n    tags LIST<TEXT>,\n    num_forks INT,\n    num_stars INT,\n    created_time TIMESTAMP,\n    last_activity_date TIMESTAMP\n);\n\nCREATE TABLE Ticket (\n    id TEXT PRIMARY KEY,\n    message TEXT,\n    repository_id TEXT,\n    developer_id TEXT,\n    num_forks INT,\n    num_stars INT,\n    created_time TIMESTAMP,\n    last_activity_date TIMESTAMP\n);\n\nCREATE TABLE Project (\n    id TEXT PRIMARY KEY,  \n    name TEXT,\n    due_date TIMESTAMP,\n    developers SET<TEXT>,  \n    repositories SET<TEXT> \n);\n\nCREATE TABLE ProjectManager (\n    id TEXT PRIMARY KEY,  \n    in_active BOOLEAN,\n    managed_projects INT\n);\n\nCREATE TABLE ProjectDeveloper (\n    id TEXT PRIMARY KEY,  \n    languages SET<TEXT>,  \n    solved_tickets SET<TEXT>  \n);\n\n**** JSON para MongoDB *****\n\nuse SoftwareProject;\n\ndb.createCollection(\"Developer\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"email\", \"permissions\", \"dev_info\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del Developer, debe ser string y es requerido.\" },\n        dev_info: {\n          bsonType: \"object\",\n          required: [\"name\", \"team\"],\n          properties: {\n            about_me: { bsonType: \"string\", description: \"Información opcional sobre el developer.\" },\n            name: { bsonType: \"string\", pattern: \"^[A-Z][a-z]*$\", description: \"Debe empezar con mayúscula.\" },\n            team: { bsonType: \"string\", description: \"Nombre del equipo al que pertenece el developer.\" }\n          }\n        },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        permissions: { enum: [\"R\", \"W\", \"X\", \"RW\", \"RX\", \"WX\", \"RWX\"], description: \"Permisos válidos del developer.\" },\n        is_active: { bsonType: \"bool\", description: \"Indica si el usuario está activo.\" },\n        suspended_acc: { anyOf: [{ bsonType: \"string\" }, { bsonType: \"bool\" }], description: \"Puede ser un String o Boolean.\" }\n      }\n    }\n  }\n});\n\ndb.Developer.createIndex({ id: 1 }, { unique: true });\ndb.Developer.createIndex({ email: 1 }, { unique: true });\n\ndb.createCollection(\"Repository\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"title\", \"url\", \"developers\", \"requests\", \"created_time\", \"last_activity_date\", \"num_forks\", \"num_stars\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del repositorio, debe ser string y es requerido.\" },\n        title: { bsonType: \"string\", description: \"Título del repositorio, requerido.\" },\n        url: { bsonType: \"string\", description: \"URL del repositorio, requerido.\" },\n        developers: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de IDs de developers asignados al repositorio.\"\n        },\n        requests: {\n          bsonType: \"array\",\n          items: {\n            bsonType: \"object\",\n            required: [\"branch\", \"status\", \"numLabels\"],\n            properties: {\n              branch: { bsonType: \"string\", description: \"Nombre de la rama.\" },\n              status: { enum: [\"Open\", \"Closed\"], description: \"Estado de la solicitud (Open/Closed).\" },\n              numLabels: { bsonType: \"int\", description: \"Número de etiquetas asociadas a la solicitud.\" }\n            }\n          }\n        },\n        tags: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de etiquetas opcionales para el repositorio.\"\n        },\n        created_time: { bsonType: \"date\", description: \"Fecha de creación del repositorio.\" },\n        last_activity_date: { bsonType: \"date\", description: \"Última actividad en el repositorio.\" },\n        num_forks: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de forks, entre 0 y 1000.\" },\n        num_stars: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de estrellas, entre 0 y 1000.\" }\n      }\n    }\n  }\n});\n\ndb.Repository.createIndex({ id: 1 }, { unique: true });\n\ndb.createCollection(\"Ticket\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"message\", \"repository_id\", \"developer_id\", \"created_time\", \"last_activity_date\", \"num_forks\", \"num_stars\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del ticket, debe ser string y es requerido.\" },\n        message: { bsonType: \"string\", description: \"Mensaje del ticket, requerido.\" },\n        repository_id: { bsonType: \"string\", description: \"ID del repositorio asociado.\" },\n        developer_id: { bsonType: \"string\", description: \"ID del developer asignado.\" },\n        created_time: { bsonType: \"date\", description: \"Fecha de creación del ticket.\" },\n        last_activity_date: { bsonType: \"date\", description: \"Última actividad en el ticket.\" },\n        num_forks: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de forks asociados al ticket.\" },\n        num_stars: { bsonType: \"int\", minimum: 0, maximum: 1000, description: \"Cantidad de estrellas asociadas al ticket.\" }\n      }\n    }\n  }\n});\n\ndb.Ticket.createIndex({ id: 1 }, { unique: true });\n\ndb.createCollection(\"Project\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"developers\", \"due_date\", \"name\", \"repositories\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del proyecto, requerido y debe ser string.\" },\n        developers: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de referencias a ProjectDeveloper, debe ser un array de strings.\"\n        },\n        due_date: { bsonType: \"date\", description: \"Fecha de entrega del proyecto, debe ser date.\" },\n        name: { bsonType: \"string\", description: \"Nombre del proyecto, requerido y debe ser string.\" },\n        repositories: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de referencias a SoftwareDev:1.Repository, debe ser un array de strings.\"\n        }\n      }\n    }\n  }\n});\n\ndb.Project.createIndex({ id: 1 }, { unique: true });\n\ndb.createCollection(\"ProjectManager\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"email\", \"permissions\", \"dev_info\", \"in_active\", \"managed_projects\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del ProjectManager, requerido y debe ser string.\" },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        permissions: { enum: [\"R\", \"W\", \"X\", \"RW\", \"RX\", \"WX\", \"RWX\"], description: \"Permisos válidos.\" },\n        dev_info: {\n          bsonType: \"object\",\n          required: [\"name\", \"team\"],\n          properties: {\n            about_me: { bsonType: \"string\", description: \"Información opcional sobre el manager.\" },\n            name: { bsonType: \"string\", pattern: \"^[A-Z][a-z]*$\", description: \"Debe empezar con mayúscula.\" },\n            team: { bsonType: \"string\", description: \"Nombre del equipo al que pertenece.\" }\n          }\n        },\n        in_active: { bsonType: \"bool\", description: \"Indica si el ProjectManager está activo.\" },\n        managed_projects: { bsonType: \"int\", minimum: 0, description: \"Cantidad de proyectos gestionados, debe ser número entero positivo.\" }\n      }\n    }\n  }\n});\n\ndb.ProjectManager.createIndex({ id: 1 }, { unique: true });\ndb.ProjectManager.createIndex({ email: 1 }, { unique: true });\n\ndb.createCollection(\"ProjectDeveloper\", {\n  validator: {\n    $jsonSchema: {\n      bsonType: \"object\",\n      required: [\"id\", \"email\", \"permissions\", \"dev_info\", \"languages\", \"solved_tickets\"],\n      properties: {\n        id: { bsonType: \"string\", description: \"ID del ProjectDeveloper, requerido y debe ser string.\" },\n        email: { bsonType: \"string\", pattern: \"^.+@.+\\\\.com$\", description: \"Debe ser un email válido.\" },\n        permissions: { enum: [\"R\", \"W\", \"X\", \"RW\", \"RX\", \"WX\", \"RWX\"], description: \"Permisos válidos.\" },\n        dev_info: {\n          bsonType: \"object\",\n          required: [\"name\", \"team\"],\n          properties: {\n            about_me: { bsonType: \"string\", description: \"Información opcional sobre el developer.\" },\n            name: { bsonType: \"string\", pattern: \"^[A-Z][a-z]*$\", description: \"Debe empezar con mayúscula.\" },\n            team: { bsonType: \"string\", description: \"Nombre del equipo.\" }\n          }\n        },\n        languages: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de lenguajes de programación que conoce.\"\n        },\n        solved_tickets: {\n          bsonType: \"array\",\n          items: { bsonType: \"string\" },\n          description: \"Lista de referencias a SoftwareDev:1.Ticket, deben ser strings.\"\n        }\n      }\n    }\n  }\n});\n\ndb.ProjectDeveloper.createIndex({ id: 1 }, { unique: true });\ndb.ProjectDeveloper.createIndex({ email: 1 }, { unique: true });\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        176
+      ],
+      "id": "ec52489b-1a76-4aeb-8a72-b0ba56373e9d",
+      "name": "Load Training Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const trainingPrompt = `\nYou are being trained to understand and apply the Athena DSL.\n\nThe training is structured in three stages:\n\nStage 1: Formal specification of the DSL\nStage 2: Documentation describing semantics and design\nStage 3: Examples of mappings between Athena and target technologies\n\nDuring training:\n- Do not generate explanations\n- Only acknowledge receipt when required\n- Internalize the information provided\n\nAfter training:\n- Solve tasks strictly using the knowledge provided\n- Do not invent constructs outside the DSL\n- Follow the syntax and semantics precisely\n\n------------------------------------------------------------\nTRAINING CONTENT\n------------------------------------------------------------\n\nSTAGE 1: FORMAL SPECIFICATION\n\n${$json.phase1_content || $json.phase1_grammar || \"\"}\n\n------------------------------------------------------------\n\nSTAGE 2: DOCUMENTATION\n\n${$json.phase2_diagram || \"\"}\n\n${$json.phase2_chapter || \"\"}\n\n${$json.phase2_slides || \"\"}\n\n------------------------------------------------------------\n\nSTAGE 3: EXAMPLES\n\n${$json.phase3_examples || \"\"}\n\n------------------------------------------------------------\nEND OF TRAINING\n------------------------------------------------------------\n`;\n\nreturn [{ training_prompt: trainingPrompt }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1808,
+        96
+      ],
+      "id": "db14162a-01d9-4217-973c-850ad807f00c",
+      "name": "Build Full Prompt"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let url = $json.file_url;\n\nif (url.includes(\"github.com\") && url.includes(\"/blob/\")) {\n  url = url\n    .replace(\"github.com\", \"raw.githubusercontent.com\")\n    .replace(\"/blob/\", \"/\");\n}\n\nreturn {\n  ...$json,\n  raw_url: url\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        96
+      ],
+      "id": "f779df86-b2f6-443e-ad41-1eefeb2c57c5",
+      "name": "Normalize_GitHub_URL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.raw_url }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1216,
+        192
+      ],
+      "id": "2907ef84-58d7-4cd5-b619-7da2daa29eed",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  id: $json.id,\n  direction: $json.direction,\n  file_url: $json.file_url,\n  temperature: 0.7,\n  run: 3,\n  model: \"deepseek-v4-flash\",\n  raw_url: $json.raw_url,\n  input: $json.data\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        -304
+      ],
+      "id": "040871dc-21cc-40bd-867b-6cc66f8ab9a9",
+      "name": "Extract Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let taskPrompt = \"\";\nlet direction = ($json.direction || \"\").trim();\n\nswitch (direction) {\n\n  case \"SQL_TO_ATHENA\":\n    taskPrompt = `\nConvert the following SQL schema into Athena DSL.\n\nRequirements:\n- Use valid Athena syntax\n- Preserve entities, attributes, keys, and relationships\n- Ensure syntactic correctness\n\nSQL input:\n${$json.input}\n`;\n    break;\n\n  case \"CASSANDRA_TO_ATHENA\":\n    taskPrompt = `\nConvert the following Cassandra (CQL) schema into Athena DSL.\n\nRequirements:\n- Use valid Athena syntax\n- Preserve entities, attributes, and relationships\n- Ensure syntactic correctness\n\nCassandra input:\n${$json.input}\n`;\n    break;\n\n  case \"MongoDB_TO_ATHENA\":\n    taskPrompt = `\nConvert the following MongoDB schema (with validator) into Athena DSL.\n\nRequirements:\n- Use valid Athena syntax\n- Map document structure to entities and aggregates\n- Preserve constraints where possible\n- Ensure syntactic correctness\n\nMongoDB input:\n${$json.input}\n`;\n    break;\n\n  case \"NL_TO_ATHENA\":\n    taskPrompt = `\nConvert the following natural language specification into Athena DSL.\n\nRequirements:\n- Use valid Athena syntax\n- Infer entities, attributes, and relationships\n- Ensure syntactic correctness\n\nSpecification:\n${$json.input}\n`;\n    break;\n\n  case \"NL_TO_ALL\":\n    taskPrompt = `\nConvert the following natural language specification into:\n\n1. Athena DSL\n2. SQL\n3. Cassandra (CQL)\n4. MongoDB with validator\n\nRequirements:\n- Ensure syntactic correctness in all outputs\n- Preserve structure and constraints\n\nSpecification:\n${$json.input}\n`;\n    break;\n\n  case \"ATHENA_TO_ALL\":\n    taskPrompt = `\nGiven the following Athena schema, convert it into:\n\n1. SQL\n2. Cassandra (CQL)\n3. MongoDB with validator\n4. Natural language description\n\nRequirements:\n- Preserve schema semantics\n- Ensure syntactic correctness in all generated schemas\n\nAthena input:\n${$json.input}\n`;\n    break;\n\n  default:\n    taskPrompt = `\nUnknown direction: ${direction}\n\nInput:\n${$json.input}\n`;\n}\n\nreturn {\n  ...$json,\n  task_prompt: taskPrompt\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        -64
+      ],
+      "id": "b4188410-ad83-4c7f-a008-51a7f4a9dd2b",
+      "name": "Build Task Prompt"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1072,
+        112
+      ],
+      "id": "86566d60-289c-4f81-9281-8dd0b89e37b6",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const training = $(\"Build Full Prompt\").first().json.training_prompt;\n\nconst finalPrompt = `\n${training}\n\n------------------------------------------------------------\nTASK\n------------------------------------------------------------\n\n${$json.task_prompt}\n\n------------------------------------------------------------\nINSTRUCTIONS\n------------------------------------------------------------\n\nUse only the DSL knowledge from the training.\nProvide only the final result.\nDo not include explanations.\n`;\n\nreturn {\n  ...$json,\n  final_prompt: finalPrompt\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        176
+      ],
+      "id": "0b5215fe-b7a7-4715-81c8-6993f2763019",
+      "name": "Build Final Prompt"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "llm_results",
+          "mode": "list",
+          "cachedResultName": "llm_results"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "temperature": "={{ $json.temperature }}",
+            "run": "={{ $json.run }}",
+            "direction": "={{ $json.direction }}",
+            "output": "={{ $json.output }}",
+            "input": "={{ $json.final_prompt }}",
+            "file_url": "={{ $json.file_url }}",
+            "model": "={{ $('Build Final Prompt').item.json.model }}",
+            "dsl": "={{ $json.dsl }}",
+            "input_schema": "={{ $('Test Data').item.json.input_schema }}",
+            "source": "_"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "direction",
+              "displayName": "direction",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "file_url",
+              "displayName": "file_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "temperature",
+              "displayName": "temperature",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "run",
+              "displayName": "run",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "dsl",
+              "displayName": "dsl",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "correct",
+              "displayName": "correct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "input_schema",
+              "displayName": "input_schema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        576,
+        0
+      ],
+      "id": "47e7fc26-7d20-4b33-b48f-af2f2a13e568",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "HHnOtmm4Lwveydej",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener output (ajusta si cambia estructura)\nlet rawOutput = $input.first().json.output || \"\";\n\n// 1. Eliminar ```plaintext, ```athena, etc.\nlet cleaned = rawOutput.replace(/```[a-zA-Z]*\\n?/g, \"\");\n\n// 2. Eliminar ``` restantes\ncleaned = cleaned.replace(/```/g, \"\");\n\n// 3. Trim espacios al inicio y final\ncleaned = cleaned.trim();\n\n// 4. (opcional pero recomendable) normalizar saltos de línea\ncleaned = cleaned.replace(/\\r\\n/g, \"\\n\");\n\n// Devolver manteniendo todo lo demás\nreturn {\n  ...$json,\n  output: cleaned\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9c4ef87f-2f95-40e6-8bc7-bab7d69a572b",
+      "name": "Clean output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28e0e78d-c36a-4d89-af45-731b4c0af3d8",
+              "name": "id",
+              "value": "={{ $('Build Final Prompt').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "63b00584-3a65-41b7-a907-35db6f922f50",
+              "name": "direction",
+              "value": "={{ $('Build Final Prompt').item.json.direction }}",
+              "type": "string"
+            },
+            {
+              "id": "ebaa8e61-9aa2-484a-aace-1d1a956fba11",
+              "name": "temperature",
+              "value": "={{ $('Build Final Prompt').item.json.temperature }}",
+              "type": "number"
+            },
+            {
+              "id": "cf434ab0-55f5-4bab-a34c-a82a2c967fd6",
+              "name": "run",
+              "value": "={{ $('Build Final Prompt').item.json.run }}",
+              "type": "number"
+            },
+            {
+              "id": "76d5b2a8-7063-4e21-bb04-e2f852edb704",
+              "name": "final_prompt",
+              "value": "={{ $('Build Final Prompt').item.json.input }}",
+              "type": "string"
+            },
+            {
+              "id": "80c556bc-d0bd-4f28-98b1-9a63a8f09b43",
+              "name": "output",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "26deb660-87b6-4912-b255-1a36f12dcc99",
+              "name": "file_url",
+              "value": "={{ $('Build Final Prompt').item.json.file_url }}",
+              "type": "string"
+            },
+            {
+              "id": "67c2b52b-f8b1-449f-a8b0-5f2ed1aa280d",
+              "name": "dsl",
+              "value": "={{ $('Test Data').item.json.dsl }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        160
+      ],
+      "id": "cfe0856e-d61e-4c90-90a3-89506b679fe2",
+      "name": "Prepare Data Stored"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n    \"id\": \"ATHENA20\",\n     \"dsl\":\"athena\",\n    \"direction\": \"ATHENA_TO_ALL\",\n    \"file_url\": \"https://github.com/modelum/DSLandLLM/blob/main/DSL_LLM_Training/AthenaTraining/Testing/Athena2Schema/Ecommerce.athena\",\n  \"input_schema\": \"ecommerce\"\n  }\n",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1568,
+        -320
+      ],
+      "id": "dd7bb5fc-0d3a-4cec-89d8-f0ca15a7000a",
+      "name": "Test Data"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-v4-flash",
+        "options": {
+          "maxTokens": 30000,
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        192
+      ],
+      "id": "029001b1-bbe8-4416-bb64-bf1e759ee6c3",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "VRgFMWNPjuoquXRA",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.final_prompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -272,
+        -48
+      ],
+      "id": "2e37657c-7f74-4cb6-8fed-971810640e5f",
+      "name": "AI Agent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Load Training Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Training Data": {
+      "main": [
+        [
+          {
+            "node": "Build Full Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Full Prompt": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_GitHub_URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [
+          {
+            "node": "Build Task Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Extract Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Task Prompt": {
+      "main": [
+        [
+          {
+            "node": "Build Final Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Final Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean output": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data Stored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data Stored": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize_GitHub_URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Clean output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "10d592c6-8d74-48b8-8e87-4a2293d3e318",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19b86c5c93b7267baed6b2188a06d01dde631537cef8f663d45934a6c0ff3918"
+  },
+  "id": "KAxBv5uSmiY273ZG",
+  "tags": []
+}

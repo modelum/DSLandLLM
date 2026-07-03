@@ -1,17 +1,19 @@
-# OrionTraining and AthenaTraining: DSL Training and Testing with LLM
+# OrionTraining and AthenaTraining
+## DSLs in the Age of LLMs: A Practical Experience on Database Schema Management Languages
+> This repository contains the artifacts associated with the paper
+> *DSLs in the Age of LLMs: A Practical Experience on Database Schema Management Languages*.
 
-This repository contains the OrionTraining and AthenaTraining projects, where training and validation processes for language models have been carried out for the comprehension, transformation, and evolution of the Orion [1] and Athena [2] DSLs.
+The OrionTraining and AthenaTraining projects provide datasets, prompts, workflows, and examples used to evaluate large language models for the comprehension, transformation, and evolution of the Orion [1] and Athena [2] DSLs.
 
 [1] Alberto Hernández Chillón, Meike Klettke, Diego Sevilla Ruiz, Jesús García Molina:
 A Generic Schema Evolution Approach for NoSQL and Relational Databases. IEEE Trans. Knowl. Data Eng. 36(7): 2774-2789 (2024)
 (https://ieeexplore.ieee.org/abstract/document/10420500)
 
-[2] 	Alberto Hernández Chillón, Diego Sevilla Ruiz, Jesús García Molina:
+[2] Alberto Hernández Chillón, Diego Sevilla Ruiz, Jesús García Molina: 
 Athena: A Database-Independent Schema Definition Language. ER (Workshops) 2021: 33-42
 (https://www.researchgate.net/publication/355185841_Athena_A_Database-Independent_Schema_Definition_Language)
 
 # Repository Structure
-
 Each project follows the same internal organization, separating the training and testing phases, along with the corresponding prompts used. In addition, a conversation with the model is included, following the prompts that were executed. The corresponding n8n workflows are also provided, enabling the execution and reproduction of the complete process.
 
 - **/**
@@ -115,17 +117,18 @@ Each project follows the same internal organization, separating the training and
                 - 📄 MongoDBTransactionModule.xtend
                 - 📄 SqlProcedureModule.xtend
 
+## Reproducing the Experiments
+To reproduce the experiments, import the corresponding n8n workflow into your n8n instance. Configure the workflow variables by selecting the target schema and the translation direction (DSL → DB or NL/DB → DSL). The workflows already include the prompt sequence, so once the variables have been configured, simply execute the workflow to reproduce the corresponding experiment.
+
 ## Training and Testing Prompts
-Each `prompt.txt` file contains multiple prompts used to train and evaluate the model.
-The prompts are separated by the delimiter "----", which allows for a clear differentiation of each query or instruction given to the model.
-- **Learning** folder: Contains the prompts designed for the model to learn the structure and rules of each DSL, including transformations to different database schemas.
-- **Testing** folder: Contains the prompts used to evaluate the language model's ability to understand and transform code from the DSLs, as well as the exported n8n workflows required to execute the evaluation process.
+The recommended way to reproduce the experiments is by using the provided **n8n workflows**, which automate the complete prompt execution process. 
+
+For users who prefer to execute the experiments manually, each `Prompt.txt` file contains the sequence of prompts used during the training and evaluation phases. Individual prompts are separated by the delimiter `----`, allowing each interaction with the language model to be reproduced independently.
+
+* **Learning** folder: Contains the prompts used to provide the model with the knowledge required to understand the structure and rules of each DSL and examples.
+* **Testing** folder: Contains the prompts used to evaluate the language model's ability to understand and transform code between the DSLs and the supported database schemas.
 
 ## Example Conversations
 You can see the example conversations here:
 - Athena: https://chatgpt.com/share/689a0551-d5f4-800b-9adb-98eb7e14cfa4
 - Orion: https://chatgpt.com/share/68961d20-1aa8-800b-b9bd-2eca64d7cf1f
-
-## Reproducing the Experiments
-To reproduce the experiments, import the corresponding n8n workflow into your n8n instance. After importing it, configure the workflow variables by selecting the schema to use and the translation direction (`DSL → DB` or `NL/DB → DSL`). Once configured, execute them using the workflow.
-
